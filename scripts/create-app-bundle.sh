@@ -5,22 +5,25 @@
 
 set -e  # Exit on error
 
-APP_NAME="Development Cleaner"
-BINARY_NAME="dev-cleaner"
-BUNDLE_ID="com.developmentcleaner.dev-cleaner"
+APP_NAME="DevSweep"
+BINARY_NAME="devsweep"
+BUNDLE_ID="com.devsweep.app"
 VERSION="0.1.0"
 MIN_MACOS="11.0"
 
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║      Development Cleaner - App Bundle & DMG Creator       ║"
+echo "║         DevSweep - App Bundle & DMG Creator                ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
 
+# Navigate to project root (we're in scripts directory)
+cd "$(dirname "$0")/.."
+
 # Generate app icon if it doesn't exist
-if [ ! -f "logo.icns" ]; then
+if [ ! -f "assets/logo.icns" ]; then
     echo "🎨 Generating app icon from SVG..."
-    if [ -f "./create-icon.sh" ]; then
-        ./create-icon.sh
+    if [ -f "scripts/create-icon.sh" ]; then
+        cd scripts && ./create-icon.sh && cd ..
     else
         echo "⚠️  Warning: create-icon.sh not found, skipping icon generation"
     fi
@@ -50,11 +53,11 @@ cp "target/release/${BINARY_NAME}" "${APP_NAME}.app/Contents/MacOS/${BINARY_NAME
 chmod +x "${APP_NAME}.app/Contents/MacOS/${BINARY_NAME}"
 
 # Copy icon if it exists
-if [ -f "logo.icns" ]; then
+if [ -f "assets/logo.icns" ]; then
     echo "  ✓ Adding app icon..."
-    cp "logo.icns" "${APP_NAME}.app/Contents/Resources/logo.icns"
+    cp "assets/logo.icns" "${APP_NAME}.app/Contents/Resources/logo.icns"
 else
-    echo "  ⚠️  Warning: logo.icns not found, app will use default icon"
+    echo "  ⚠️  Warning: assets/logo.icns not found, app will use default icon"
 fi
 
 # Create Info.plist
@@ -98,16 +101,16 @@ echo ""
 
 # Sign the app with entitlements (ad-hoc signing)
 echo "🔐 Signing app bundle..."
-if [ -f "entitlements.plist" ]; then
+if [ -f "scripts/entitlements.plist" ]; then
     # Ad-hoc signing with entitlements (no developer certificate needed)
-    codesign --force --deep --sign - --entitlements entitlements.plist "${APP_NAME}.app"
+    codesign --force --deep --sign - --entitlements scripts/entitlements.plist "${APP_NAME}.app"
     if [ $? -eq 0 ]; then
         echo "✓ App signed with entitlements (ad-hoc signature)"
     else
         echo "⚠️  Warning: Code signing failed, app may have restricted permissions"
     fi
 else
-    echo "⚠️  Warning: entitlements.plist not found, signing without entitlements"
+    echo "⚠️  Warning: scripts/entitlements.plist not found, signing without entitlements"
     codesign --force --deep --sign - "${APP_NAME}.app" 2>/dev/null || true
 fi
 echo ""
@@ -149,7 +152,7 @@ ln -s /Applications "${DMG_TEMP}/Applications"
 
 # Optional: Create a README in the DMG
 cat > "${DMG_TEMP}/README.txt" << EOF
-Development Cleaner v${VERSION}
+DevSweep v${VERSION}
 
 Installation:
 1. Drag "${APP_NAME}.app" to the Applications folder
@@ -163,7 +166,7 @@ Features:
 - Customizable cache TTL settings
 - 16+ development tool categories supported
 
-For more information, visit: https://github.com/yourusername/development-cleaner
+For more information, visit: https://github.com/canggihpw/devsweep
 
 Note: Some cleanup operations may require administrator privileges.
 Grant Full Disk Access in System Preferences for best results.
@@ -217,7 +220,7 @@ echo "   ✓ App signed with ad-hoc signature + entitlements"
 echo "   📝 This allows access to .Trash and other directories"
 echo ""
 echo "💡 For distribution (requires Apple Developer account):"
-echo "   codesign --force --deep --sign 'Developer ID' --entitlements entitlements.plist '${APP_NAME}.app'"
+echo "   codesign --force --deep --sign 'Developer ID' --entitlements scripts/entitlements.plist '${APP_NAME}.app'"
 echo "   codesign --sign 'Developer ID' '${DMG_NAME}'"
 echo ""
 echo "⚠️  Important: Grant Full Disk Access after installation:"

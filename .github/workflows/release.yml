@@ -1,0 +1,152 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: macos-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION=${{ steps.get_version.outputs.version }}
+          # Extract the changelog for this version
+          CHANGELOG=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## What's Changed
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Installation
+
+            ### macOS App Bundle
+            Download the `.dmg` file below and drag DevSweep.app to your Applications folder.
+
+            ### Build from Source
+            See the [README](https://github.com/canggihpw/devsweep/blob/main/README.md#installation) for build instructions.
+
+            ## Checksums
+
+            See the checksums file for verification.
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+
+  build-release:
+    name: Build Release Binary
+    needs: create-release
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release --verbose
+
+      - name: Create app bundle
+        run: |
+          chmod +x scripts/create-app-bundle.sh
+          cd scripts && ./create-app-bundle.sh
+
+      - name: Create DMG
+        # Create DMG
+        run: |
+          # Install create-dmg if not available
+          brew install create-dmg || true
+
+          # Create DMG
+          mkdir -p dmg_contents
+          cp -R "DevSweep.app" dmg_contents/
+
+          create-dmg \
+            --volname "DevSweep" \
+            --volicon "assets/logo.icns" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "DevSweep.app" 200 190 \
+            --hide-extension "DevSweep.app" \
+            --app-drop-link 600 185 \
+            "DevSweep-${{ needs.create-release.outputs.version }}.dmg" \
+            "dmg_contents/"
+
+      - name: Generate checksums
+        run: |
+          shasum -a 256 "DevSweep-${{ needs.create-release.outputs.version }}.dmg" > checksums.txt
+          cat checksums.txt
+
+      - name: Upload DMG
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./DevSweep-${{ needs.create-release.outputs.version }}.dmg
+          asset_name: DevSweep-${{ needs.create-release.outputs.version }}.dmg
+          asset_content_type: application/x-apple-diskimage
+
+      - name: Upload checksums
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./checksums.txt
+          asset_name: checksums.txt
+          asset_content_type: text/plain
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./target/release/devsweep
+          asset_name: devsweep-macos-${{ needs.create-release.outputs.version }}
+          asset_content_type: application/octet-stream

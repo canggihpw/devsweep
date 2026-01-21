@@ -2,16 +2,19 @@
 
 # Script to convert image.svg to logo.icns for macOS app bundle
 # This creates a proper .icns file with multiple resolutions
-# Used by Development Cleaner (GPUI-based app)
+# Used by DevSweep (GPUI-based app)
 
 set -e
 
 echo "🎨 Creating macOS app icon from SVG..."
 
+# Navigate to project root (we're in scripts directory)
+cd "$(dirname "$0")/.."
+
 # Check if source SVG exists
-if [ ! -f "image.svg" ]; then
-    echo "❌ Error: image.svg not found!"
-    echo "Please place image.svg in the current directory."
+if [ ! -f "assets/image.svg" ]; then
+    echo "❌ Error: assets/image.svg not found!"
+    echo "Please place image.svg in the assets directory."
     exit 1
 fi
 
@@ -41,14 +44,14 @@ convert_svg_to_png() {
 
     if command -v rsvg-convert &> /dev/null; then
         # Use rsvg-convert (better quality)
-        rsvg-convert -w $size -h $size "image.svg" -o "$output"
+        rsvg-convert -w $size -h $size "assets/image.svg" -o "$output"
     else
         # Fallback: Use sips with intermediate conversion
         # First convert SVG to PNG using qlmanage, then resize with sips
-        qlmanage -t -s $size -o . "image.svg" > /dev/null 2>&1
+        qlmanage -t -s $size -o . "assets/image.svg" > /dev/null 2>&1
         mv "image.svg.png" "$output" 2>/dev/null || {
             # Alternative: use macOS native conversion
-            sips -s format png "image.svg" --out temp.png > /dev/null 2>&1
+            sips -s format png "assets/image.svg" --out temp.png > /dev/null 2>&1
             sips -z $size $size temp.png --out "$output" > /dev/null 2>&1
             rm -f temp.png
         }
@@ -75,17 +78,17 @@ convert_svg_to_png 1024 "$ICONSET_DIR/icon_512x512@2x.png"
 echo "🔧 Converting iconset to .icns format..."
 
 # Convert iconset to .icns using macOS iconutil
-iconutil -c icns "$ICONSET_DIR" -o logo.icns
+iconutil -c icns "$ICONSET_DIR" -o assets/logo.icns
 
 # Clean up temporary iconset directory
 rm -rf "$ICONSET_DIR"
 
-echo "✅ Successfully created logo.icns"
-echo "📍 Location: $(pwd)/logo.icns"
+echo "✅ Successfully created assets/logo.icns"
+echo "📍 Location: $(pwd)/assets/logo.icns"
 echo ""
 echo "The icon is ready to be used in your app bundle!"
 echo ""
 echo "💡 Next steps:"
-echo "   • Use with create-app-bundle.sh to build Development Cleaner.app"
-echo "   • Binary name: dev-cleaner"
+echo "   • Use with create-app-bundle.sh to build DevSweep.app"
+echo "   • Binary name: devsweep"
 echo "   • Requires: macOS 11.0+ (GPUI framework requirement)"

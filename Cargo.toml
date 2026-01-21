@@ -1,8 +1,15 @@
 [package]
-name = "dev-cleaner"
+name = "devsweep"
 version = "0.1.0"
 edition = "2021"
-description = "Development Cleaner - Desktop App with GPUI"
+authors = ["DevSweep Contributors"]
+description = "A modern macOS desktop application that helps developers reclaim disk space by identifying and safely removing development tool caches and build artifacts"
+readme = "README.md"
+homepage = "https://github.com/canggihpw/devsweep"
+repository = "https://github.com/canggihpw/devsweep"
+license = "MIT"
+keywords = ["developer-tools", "macos", "cache-cleaner", "disk-space", "cleanup"]
+categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed", rev = "v0.167.2" }
@@ -16,7 +23,7 @@ chrono = "0.4"
 fs2 = "0.4.3"
 
 [[bin]]
-name = "dev-cleaner"
+name = "devsweep"
 path = "src/main.rs"
 
 [profile.release]
