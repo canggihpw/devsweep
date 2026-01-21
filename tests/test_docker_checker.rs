@@ -104,11 +104,11 @@ fn test_docker_volumes_structure() {
 
     // Create mock volumes
     let volume1 = volumes_dir.join("my-volume-1");
-    fs::create_dir_all(&volume1.join("_data")).unwrap();
+    fs::create_dir_all(volume1.join("_data")).unwrap();
     fs::write(volume1.join("_data").join("file.txt"), b"data").unwrap();
 
     let volume2 = volumes_dir.join("my-volume-2");
-    fs::create_dir_all(&volume2.join("_data")).unwrap();
+    fs::create_dir_all(volume2.join("_data")).unwrap();
     fs::write(volume2.join("_data").join("data.db"), b"database").unwrap();
 
     assert!(volumes_dir.exists());
