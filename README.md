@@ -1,10 +1,16 @@
-# Development Cleaner
+# DevSweep
+
+[![Release](https://img.shields.io/github/v/release/canggihpw/devsweep)](https://github.com/canggihpw/devsweep/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/canggihpw/devsweep/ci.yml?branch=development&label=CI)](https://github.com/canggihpw/devsweep/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/canggihpw/devsweep)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-11.0+-blue)](https://github.com/canggihpw/devsweep)
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange)](https://www.rust-lang.org/)
 
 A powerful macOS desktop application for cleaning up development caches and temporary files, built with Rust and GPUI.
 
 ## Overview
 
-Development Cleaner helps you reclaim disk space by safely removing caches and temporary files created by development tools like Docker, Homebrew, Node.js, Python, Rust, Xcode, and more. Built with modern Rust and the GPUI framework (from Zed editor), it provides a fast, native macOS experience.
+DevSweep helps you reclaim disk space by safely removing caches and temporary files created by development tools like Docker, Homebrew, Node.js, Python, Rust, Xcode, and more. Built with modern Rust and the GPUI framework (from Zed editor), it provides a fast, native macOS experience.
 
 ## Features
 
@@ -81,7 +87,7 @@ The app scans and cleans the following (16 categories):
 
 1. Download the latest `.dmg` from releases
 2. Open the DMG file
-3. Drag "Development Cleaner.app" to Applications folder
+3. Drag "DevSweep.app" to Applications folder
 4. Right-click the app and select "Open" (first time only, macOS Gatekeeper)
 5. Grant Full Disk Access in System Preferences → Privacy & Security → Full Disk Access
 
@@ -94,8 +100,8 @@ The app scans and cleans the following (16 categories):
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/dev-cleaner.git
-cd dev-cleaner
+git clone https://github.com/canggihpw/devsweep.git
+cd devsweep
 
 # Build release version
 cargo build --release
@@ -111,8 +117,8 @@ cargo build --release
 ./create-app-bundle.sh
 
 # This creates:
-# - Development Cleaner.app (macOS app bundle)
-# - Development Cleaner-0.1.0.dmg (ready to distribute)
+# - DevSweep.app (macOS app bundle)
+# - DevSweep-0.1.0.dmg (ready to distribute)
 ```
 
 ## Usage
@@ -383,7 +389,7 @@ dev-cleaner/
 
 **Solution**:
 1. System Preferences → Privacy & Security → Full Disk Access
-2. Add Development Cleaner.app
+2. Add DevSweep.app
 3. Restart the app
 
 ### App won't open ("unidentified developer")
@@ -391,7 +397,7 @@ dev-cleaner/
 **Symptom**: macOS Gatekeeper blocks the app
 
 **Solution**:
-1. Right-click Development Cleaner.app
+1. Right-click DevSweep.app
 2. Select "Open"
 3. Click "Open" in the dialog
 4. For subsequent launches, double-click works normally
@@ -440,7 +446,7 @@ The app is automatically signed with ad-hoc signature:
 
 ```bash
 # Already done by create-app-bundle.sh
-codesign --force --deep --sign - --entitlements entitlements.plist "Development Cleaner.app"
+codesign --force --deep --sign - --entitlements entitlements.plist "DevSweep.app"
 ```
 
 ### For Distribution
@@ -453,20 +459,20 @@ codesign --force --deep \
   --sign "Developer ID Application: Your Name (TEAM_ID)" \
   --entitlements entitlements.plist \
   --options runtime \
-  "Development Cleaner.app"
+  "DevSweep.app"
 
 # Sign DMG
 codesign --sign "Developer ID Application: Your Name (TEAM_ID)" \
-  "Development Cleaner-0.1.0.dmg"
+  "DevSweep-0.1.0.dmg"
 
 # Notarize (required for distribution)
-xcrun notarytool submit "Development Cleaner-0.1.0.dmg" \
+xcrun notarytool submit "DevSweep-0.1.0.dmg" \
   --apple-id "your@email.com" \
   --team-id "TEAM_ID" \
   --password "app-specific-password"
 
 # Staple notarization ticket
-xcrun stapler staple "Development Cleaner-0.1.0.dmg"
+xcrun stapler staple "DevSweep-0.1.0.dmg"
 ```
 
 ## Performance
@@ -589,4 +595,4 @@ A: GPUI provides native macOS performance with GPU acceleration, smooth 60fps, a
 
 **Built with ❤️ using Rust and GPUI**
 
-For issues, feature requests, or contributions, visit the [GitHub repository](https://github.com/yourusername/dev-cleaner).
+For issues, feature requests, or contributions, visit the [GitHub repository](https://github.com/canggihpw/devsweep).
