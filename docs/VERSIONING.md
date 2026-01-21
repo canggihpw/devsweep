@@ -229,7 +229,7 @@ The version is primarily defined in `Cargo.toml`:
 
 ```toml
 [package]
-name = "dev-cleaner"
+name = "devsweep"
 version = "1.2.0"
 ```
 

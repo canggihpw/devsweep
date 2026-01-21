@@ -663,13 +663,13 @@ impl DevCleaner {
                     .gap_2()
                     .border_b_1()
                     .border_color(Theme::surface0())
-                    .child(div().text_3xl().child("🧹"))
+                    .child(svg().path("assets/image.svg").size(px(48.0)))
                     .child(
                         div()
                             .text_sm()
                             .font_weight(FontWeight::BOLD)
                             .text_color(Theme::text())
-                            .child("Dev Cleaner"),
+                            .child("DevSweep"),
                     ),
             )
             // Navigation items
@@ -1877,13 +1877,17 @@ impl DevCleaner {
                     .flex_col()
                     .items_center()
                     .gap_4()
-                    .child(div().text_3xl().child("🧹"))
+                    .child(
+                        svg()
+                            .path("assets/image.svg")
+                            .size(px(80.0))
+                    )
                     .child(
                         div()
                             .text_2xl()
                             .font_weight(FontWeight::BOLD)
                             .text_color(Theme::text())
-                            .child("Development Cleaner")
+                            .child("DevSweep")
                     )
                     .child(
                         div()
@@ -1980,7 +1984,7 @@ fn main() {
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("Development Cleaner".into()),
+                    title: Some("DevSweep".into()),
                     appears_transparent: false,
                     ..Default::default()
                 }),

@@ -6,7 +6,7 @@ Welcome to the DevSweep documentation! This directory contains comprehensive gui
 
 ### For Users
 
-- **[Installation Guide](../README.md#installation)** - How to install and set up Development Cleaner
+- **[Installation Guide](../README.md#installation)** - How to install and set up DevSweep
 - **[Usage Guide](../README.md#usage)** - How to use the application
 - **[FAQ](../README.md#faq)** - Frequently asked questions
 - **[Troubleshooting](../README.md#troubleshooting)** - Common issues and solutions
@@ -27,7 +27,7 @@ Welcome to the DevSweep documentation! This directory contains comprehensive gui
 ## Project Structure
 
 ```
-dev-cleaner/
+devsweep/
 ├── src/                    # Source code
 │   ├── main.rs            # Application entry point
 │   ├── backend.rs         # Core scanning logic

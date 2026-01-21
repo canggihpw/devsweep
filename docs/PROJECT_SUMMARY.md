@@ -194,7 +194,7 @@ Free and open source, forever.
 
 ## Future Vision
 
-Development Cleaner aims to become the essential maintenance tool for every developer's macOS machine, providing:
+DevSweep aims to become the essential maintenance tool for every developer's macOS machine, providing:
 - Zero-configuration automatic cache management
 - Intelligent predictions of safe-to-delete files
 - Integration with development workflows

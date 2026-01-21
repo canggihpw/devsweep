@@ -107,7 +107,7 @@ cd devsweep
 cargo build --release
 
 # Run the app
-./target/release/dev-cleaner
+./target/release/devsweep
 ```
 
 ### Option 3: Create App Bundle + DMG
@@ -266,13 +266,13 @@ The app requires Full Disk Access to scan all directories:
 1. Open **System Preferences** → **Privacy & Security**
 2. Select **Full Disk Access** in the sidebar
 3. Click the **+** button
-4. Add **Development Cleaner.app**
+4. Add **DevSweep.app**
 5. Restart the app
 
 ## Architecture
 
 ```
-dev-cleaner/
+devsweep/
 ├── src/
 │   ├── main.rs              # App entry point, UI rendering (GPUI)
 │   ├── backend.rs           # Core scanning and cleanup logic

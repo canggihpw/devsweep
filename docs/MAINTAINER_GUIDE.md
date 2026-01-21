@@ -82,8 +82,8 @@ Edit `CHANGELOG.md`:
 
 Also update the links at the bottom:
 ```markdown
-[Unreleased]: https://github.com/USERNAME/dev-cleaner/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/USERNAME/dev-cleaner/compare/v0.1.0...v0.2.0
+[Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/canggihpw/devsweep/compare/v0.1.0...v0.2.0
 ```
 
 #### Step 3: Commit and Tag
