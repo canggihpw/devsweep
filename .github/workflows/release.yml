@@ -92,32 +92,10 @@ jobs:
       - name: Build release binary
         run: cargo build --release --verbose
 
-      - name: Create app bundle
+      - name: Create app bundle and DMG
         run: |
           chmod +x scripts/create-app-bundle.sh
-          cd scripts && ./create-app-bundle.sh
-
-      - name: Create DMG
-        # Create DMG
-        run: |
-          # Install create-dmg if not available
-          brew install create-dmg || true
-
-          # Create DMG
-          mkdir -p dmg_contents
-          cp -R "DevSweep.app" dmg_contents/
-
-          create-dmg \
-            --volname "DevSweep" \
-            --volicon "assets/logo.icns" \
-            --window-pos 200 120 \
-            --window-size 800 400 \
-            --icon-size 100 \
-            --icon "DevSweep.app" 200 190 \
-            --hide-extension "DevSweep.app" \
-            --app-drop-link 600 185 \
-            "DevSweep-${{ needs.create-release.outputs.version }}.dmg" \
-            "dmg_contents/"
+          ./scripts/create-app-bundle.sh
 
       - name: Generate checksums
         run: |
