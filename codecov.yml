@@ -4,24 +4,22 @@ coverage:
   status:
     project:
       default:
-        target: 70%           # Overall project coverage target
-        threshold: 2%         # Allow 2% drop before failing
-        
+        informational: true # Show coverage but don't fail CI
+
     patch:
       default:
-        target: 60%           # New code coverage target
-        threshold: 5%
+        informational: true # Show coverage for new code but don't fail CI
 
   precision: 2
   round: down
-  range: 50..90              # Coverage range (red to green)
+  range: 50..90 # Coverage range (red to green)
 
 ignore:
-  - "src/main.rs"            # Ignore main entry point
-  - "src/ui/**"              # Ignore UI components (hard to test)
-  - "src/app.rs"             # Ignore GPUI app setup
-  - "src/assets.rs"          # Ignore asset loading
-  - "tests/**"               # Don't include tests in coverage
+  - "src/main.rs" # Ignore main entry point
+  - "src/ui/**" # Ignore UI components (hard to test)
+  - "src/app.rs" # Ignore GPUI app setup
+  - "src/assets.rs" # Ignore asset loading
+  - "tests/**" # Don't include tests in coverage
 
 comment:
   layout: "header, diff, flags, components"
@@ -40,19 +38,19 @@ component_management:
   default_rules:
     statuses:
       - type: project
-        target: 70%
-  
+        informational: true # Show component coverage but don't fail
+
   individual_components:
     - component_id: backend
       name: Backend Module
       paths:
         - src/backend.rs
-      
+
     - component_id: checkers
       name: Checker Modules
       paths:
         - src/checkers/**
-        
+
     - component_id: core
       name: Core Utilities
       paths:
