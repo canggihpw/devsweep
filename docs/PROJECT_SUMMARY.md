@@ -46,9 +46,10 @@ DevSweep provides:
 
 ### 🎨 Modern User Interface
 - Native macOS look and feel
-- Responsive design
-- Tab-based navigation
+- Light and dark theme support (Catppuccin Latte/Mocha)
+- Responsive design with tab-based navigation
 - Real-time feedback
+- Single-instance app behavior
 
 ## Supported Development Tools
 
@@ -72,7 +73,9 @@ DevSweep provides:
 - **UI Framework**: GPUI (Zed's GPU-accelerated UI framework)
 - **Platform**: macOS 11.0+
 - **Build System**: Cargo
-- **Dependencies**: Minimal, carefully selected
+- **Asset Embedding**: rust-embed for bundling icons
+- **Image Processing**: image crate for icon loading
+- **Theme**: Catppuccin (Latte for light, Mocha for dark)
 
 ## Architecture Highlights
 
@@ -118,6 +121,9 @@ DevSweep provides:
 - ✅ Quarantine system
 - ✅ Modern GPUI-based UI
 - ✅ Support for major development tools
+- ✅ Light/dark theme toggle
+- ✅ Single-instance app behavior
+- ✅ Embedded app icons
 - 🔄 Comprehensive testing
 - 🔄 Performance benchmarking
 

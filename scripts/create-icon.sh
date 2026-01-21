@@ -12,11 +12,13 @@ echo "🎨 Creating macOS app icon from SVG..."
 cd "$(dirname "$0")/.."
 
 # Check if source SVG exists
-if [ ! -f "assets/image.svg" ]; then
-    echo "❌ Error: assets/image.svg not found!"
-    echo "Please place image.svg in the assets directory."
+if [ ! -f "assets/image-dark.svg" ]; then
+    echo "❌ Error: assets/image-dark.svg not found!"
+    echo "Please place image-dark.svg in the assets directory."
     exit 1
 fi
+
+SVG_SOURCE="assets/image-dark.svg"
 
 # Create temporary directory for icon generation
 ICONSET_DIR="AppIcon.iconset"
@@ -44,14 +46,14 @@ convert_svg_to_png() {
 
     if command -v rsvg-convert &> /dev/null; then
         # Use rsvg-convert (better quality)
-        rsvg-convert -w $size -h $size "assets/image.svg" -o "$output"
+        rsvg-convert -w $size -h $size "$SVG_SOURCE" -o "$output"
     else
         # Fallback: Use sips with intermediate conversion
         # First convert SVG to PNG using qlmanage, then resize with sips
-        qlmanage -t -s $size -o . "assets/image.svg" > /dev/null 2>&1
-        mv "image.svg.png" "$output" 2>/dev/null || {
+        qlmanage -t -s $size -o . "$SVG_SOURCE" > /dev/null 2>&1
+        mv "image-dark.svg.png" "$output" 2>/dev/null || {
             # Alternative: use macOS native conversion
-            sips -s format png "assets/image.svg" --out temp.png > /dev/null 2>&1
+            sips -s format png "$SVG_SOURCE" --out temp.png > /dev/null 2>&1
             sips -z $size $size temp.png --out "$output" > /dev/null 2>&1
             rm -f temp.png
         }
@@ -84,11 +86,27 @@ iconutil -c icns "$ICONSET_DIR" -o assets/logo.icns
 rm -rf "$ICONSET_DIR"
 
 echo "✅ Successfully created assets/logo.icns"
-echo "📍 Location: $(pwd)/assets/logo.icns"
+
+# Also generate PNG files for in-app icons
 echo ""
-echo "The icon is ready to be used in your app bundle!"
+echo "📐 Generating PNG files for in-app icons..."
+
+# Generate PNG files for both themes (used in sidebar and about tab)
+if command -v rsvg-convert &> /dev/null; then
+    rsvg-convert -w 96 -h 96 "assets/image-dark.svg" -o "assets/icon-dark.png"
+    rsvg-convert -w 192 -h 192 "assets/image-dark.svg" -o "assets/icon-dark@2x.png"
+    rsvg-convert -w 96 -h 96 "assets/image-light.svg" -o "assets/icon-light.png"
+    rsvg-convert -w 192 -h 192 "assets/image-light.svg" -o "assets/icon-light@2x.png"
+    echo "  ✓ Created icon-dark.png and icon-dark@2x.png"
+    echo "  ✓ Created icon-light.png and icon-light@2x.png"
+fi
+
+echo ""
+echo "📍 Generated files:"
+echo "   • assets/logo.icns (app bundle icon)"
+echo "   • assets/icon-dark.png (for light theme in-app)"
+echo "   • assets/icon-light.png (for dark theme in-app)"
 echo ""
 echo "💡 Next steps:"
-echo "   • Use with create-app-bundle.sh to build DevSweep.app"
-echo "   • Binary name: devsweep"
-echo "   • Requires: macOS 11.0+ (GPUI framework requirement)"
+echo "   • Run 'cargo build' to embed the new icons"
+echo "   • Use create-app-bundle.sh to build DevSweep.app"

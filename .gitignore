@@ -58,8 +58,8 @@ DevSweep.app/
 tmp/
 temp/
 
-# Generated icon files
-*.png
+# Generated icon files (keep assets PNGs)
+!assets/*.png
 !assets/logo.icns
 
 # Environment

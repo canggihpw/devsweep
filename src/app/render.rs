@@ -1,4 +1,5 @@
 use crate::app::state::DevSweep;
+use crate::assets::Assets;
 use crate::ui::sidebar::Tab;
 use crate::ui::Theme;
 use gpui::*;
@@ -43,21 +44,31 @@ impl DevSweep {
             .border_color(Theme::surface0(self.theme_mode))
             .flex()
             .flex_col()
-            // Logo and title
+            // Logo and title (side by side)
             .child(
                 div()
                     .w_full()
-                    .p_4()
+                    .px_4()
+                    .py_4()
                     .flex()
-                    .flex_col()
                     .items_center()
-                    .gap_2()
+                    .gap_3()
                     .border_b_1()
                     .border_color(Theme::surface0(self.theme_mode))
-                    .child(svg().path(self.theme_mode.icon_path()).size(px(48.0)))
+                    .child(
+                        if let Some(icon) = Assets::get_icon(self.theme_mode.icon_path()) {
+                            img(icon)
+                                .w(px(36.0))
+                                .h(px(36.0))
+                                .id("sidebar-logo")
+                                .into_any_element()
+                        } else {
+                            div().w(px(36.0)).h(px(36.0)).into_any_element()
+                        },
+                    )
                     .child(
                         div()
-                            .text_sm()
+                            .text_xl()
                             .font_weight(FontWeight::BOLD)
                             .text_color(Theme::text(self.theme_mode))
                             .child("DevSweep"),

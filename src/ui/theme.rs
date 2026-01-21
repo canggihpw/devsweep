@@ -23,8 +23,8 @@ impl ThemeMode {
 
     pub fn icon_path(&self) -> &'static str {
         match self {
-            ThemeMode::Light => "assets/image-dark.svg",
-            ThemeMode::Dark => "assets/image-light.svg",
+            ThemeMode::Light => "icon-dark.png",
+            ThemeMode::Dark => "icon-light.png",
         }
     }
 }

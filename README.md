@@ -274,38 +274,56 @@ The app requires Full Disk Access to scan all directories:
 ```
 devsweep/
 ├── src/
-│   ├── main.rs              # App entry point, UI rendering (GPUI)
+│   ├── main.rs              # App entry point, single-instance handling
+│   ├── assets.rs            # Embedded assets (rust-embed + image loading)
 │   ├── backend.rs           # Core scanning and cleanup logic
 │   ├── types.rs             # Data structures
 │   ├── utils.rs             # Helper functions
 │   ├── scan_cache.rs        # Cache management with TTL
 │   ├── cleanup_history.rs   # Quarantine and undo system
 │   ├── cache_settings.rs    # Settings persistence
+│   ├── app/                 # GPUI application components
+│   │   ├── mod.rs           # Module exports
+│   │   ├── state.rs         # Application state (DevSweep struct)
+│   │   ├── actions.rs       # Action handlers (scan, clean, etc.)
+│   │   ├── render.rs        # Main UI rendering, sidebar
+│   │   └── tabs/            # Tab-specific UI
+│   │       ├── mod.rs
+│   │       ├── scan_tab.rs
+│   │       ├── quarantine_tab.rs
+│   │       ├── settings_tab.rs
+│   │       └── about_tab.rs
 │   ├── checkers/            # Category-specific scanners
 │   │   ├── mod.rs
 │   │   ├── docker.rs
 │   │   ├── homebrew.rs
 │   │   ├── nodejs.rs
 │   │   ├── python.rs
-│   │   ├── rust.rs
+│   │   ├── rust_cargo.rs
 │   │   ├── xcode.rs
 │   │   ├── java.rs
-│   │   ├── go_lang.rs
-│   │   ├── ide_caches.rs
-│   │   ├── shell_caches.rs
-│   │   ├── db_caches.rs
-│   │   ├── system_logs.rs
-│   │   ├── browsers.rs
-│   │   ├── node_modules.rs
-│   │   ├── general_caches.rs
-│   │   └── trash.rs
+│   │   ├── go.rs
+│   │   ├── ide.rs
+│   │   ├── shell.rs
+│   │   ├── db.rs
+│   │   ├── logs.rs
+│   │   ├── browser.rs
+│   │   └── general.rs
 │   └── ui/
 │       ├── mod.rs
-│       ├── sidebar.rs       # Navigation tabs
-│       └── theme.rs         # Catppuccin Mocha colors
-├── create-app-bundle.sh     # Bundle + DMG creator
-├── create-icon.sh           # Icon generator
-├── entitlements.plist       # macOS permissions
+│       ├── sidebar.rs       # Tab definitions and icons
+│       └── theme.rs         # Catppuccin Latte/Mocha colors
+├── assets/
+│   ├── image-dark.svg       # Logo for light theme
+│   ├── image-light.svg      # Logo for dark theme
+│   ├── icon-dark.png        # Generated icon for light theme
+│   ├── icon-light.png       # Generated icon for dark theme
+│   └── logo.icns            # macOS app bundle icon
+├── scripts/
+│   ├── create-app-bundle.sh # Bundle + DMG creator
+│   ├── create-icon.sh       # Icon generator from SVG
+│   └── entitlements.plist   # macOS permissions
+├── docs/                    # Documentation
 └── Cargo.toml               # Dependencies
 ```
 
@@ -317,7 +335,9 @@ devsweep/
 - **[Serde](https://serde.rs/)** - Serialization framework
 - **[WalkDir](https://github.com/BurntSushi/walkdir)** - Recursive directory traversal
 - **[Chrono](https://github.com/chronotope/chrono)** - Date and time handling
-- **[Catppuccin](https://github.com/catppuccin/catppuccin)** - Latte (light mode) theme palette
+- **[rust-embed](https://github.com/pyrossh/rust-embed)** - Embed assets in binary
+- **[image](https://github.com/image-rs/image)** - Image decoding for icons
+- **[Catppuccin](https://github.com/catppuccin/catppuccin)** - Latte/Mocha theme palettes
 
 ## How It Works
 
@@ -505,6 +525,13 @@ xcrun stapler staple "DevSweep-0.1.0.dmg"
 
 ## Roadmap
 
+### Completed Features
+
+- [x] **Dark mode**: Toggle between light/dark themes
+  - Uses Catppuccin Latte (light) and Mocha (dark) palettes
+  - Theme-aware icons that adapt to current mode
+- [x] **Single-instance app**: Prevents multiple windows when reopening
+
 ### Planned Features
 
 - [ ] **Custom scan paths**: Add your own directories to scan
@@ -514,9 +541,6 @@ xcrun stapler staple "DevSweep-0.1.0.dmg"
 - [ ] **Cloud storage cleanup**: Google Drive, Dropbox, iCloud caches
 - [ ] **Smart recommendations**: AI-based cleanup suggestions
 - [ ] **Menu bar mode**: Quick access from menu bar
-- [ ] **Dark mode**: Toggle between light/dark themes (currently light mode only)
-  - Requires new logo assets for dark background
-  - Will use Catppuccin Mocha palette
 - [ ] **Whitelist/blacklist**: Exclude specific paths
 - [ ] **Cleanup profiles**: Save and load cleanup configurations
 - [ ] **Git repository cleanup**: Old branches, stale remotes

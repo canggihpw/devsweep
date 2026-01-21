@@ -1,4 +1,5 @@
 use crate::app::state::DevSweep;
+use crate::assets::Assets;
 use crate::ui::Theme;
 use gpui::*;
 
@@ -20,7 +21,17 @@ impl DevSweep {
                     .flex_col()
                     .items_center()
                     .gap_4()
-                    .child(svg().path(self.theme_mode.icon_path()).size(px(80.0)))
+                    .child(
+                        if let Some(icon) = Assets::get_icon(self.theme_mode.icon_path()) {
+                            img(icon)
+                                .size(px(80.0))
+                                .into_any_element()
+                        } else {
+                            div()
+                                .size(px(80.0))
+                                .into_any_element()
+                        },
+                    )
                     .child(
                         div()
                             .text_2xl()
