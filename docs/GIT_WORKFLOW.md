@@ -83,7 +83,7 @@ git checkout -b feature/add-new-checker
 git branch
 ```
 
-### 2. Make Changes
+### 2. Make Changes and Commit Locally
 
 ```bash
 # Make your changes
@@ -94,19 +94,66 @@ git add .
 
 # Commit with conventional commit message
 git commit -m "feat: add Flutter cache checker"
+
+# ⚠️ WAIT! Don't push yet!
+# Continue working and making more commits...
 ```
 
-### 3. Push Feature Branch
+**Important**: Commit frequently but push deliberately!
+
+### 3. Make Multiple Commits (Optional)
 
 ```bash
-# Push to remote (creates new branch on GitHub)
-git push origin feature/add-new-checker
+# Continue working on your feature
+# Make more changes...
+
+git add .
+git commit -m "test: add tests for Flutter checker"
+
+# More changes...
+git commit -m "docs: update readme with Flutter support"
+
+# Still not pushing - accumulate commits locally
+```
+
+### 4. Review Your Work Before Pushing
+
+```bash
+# Review what you've committed
+git log --oneline -5
+
+# Check diff with development
+git diff development
+
+# Verify all tests pass locally
+cargo test
+
+# Check code quality
+cargo fmt --check
+cargo clippy
+```
+
+### 5. Push When Ready (User Decision)
+
+```bash
+# Only push when you're ready to share your work
+# This is a DELIBERATE action, not automatic
+
+# First time pushing this branch
+git push -u origin feature/add-new-checker
 
 # Or if branch already exists
 git push
 ```
 
-### 4. Create Pull Request
+**Why wait to push?**
+- ✅ Accumulate related commits together
+- ✅ Verify tests pass before sharing
+- ✅ Fix mistakes locally without polluting remote
+- ✅ Group logical chunks of work
+- ✅ Reduce noise in remote repository
+
+### 6. Create Pull Request
 
 **On GitHub:**
 1. Go to repository
@@ -117,7 +164,7 @@ git push
 6. Wait for CI checks to pass
 7. Request review if needed
 
-### 5. After PR is Merged
+### 7. After PR is Merged
 
 ```bash
 # Switch back to development
@@ -131,6 +178,59 @@ git branch -d feature/add-new-checker
 
 # Delete remote feature branch (optional, GitHub can do this)
 git push origin --delete feature/add-new-checker
+```
+
+## Why Commit Locally Before Pushing?
+
+### Benefits of Local Commits
+
+1. **Fix Mistakes Privately** ✅
+   ```bash
+   # Made a typo in commit message?
+   git commit --amend -m "fix: correct typo in message"
+   
+   # Need to add forgotten files?
+   git add forgotten_file.rs
+   git commit --amend --no-edit
+   
+   # Want to combine commits?
+   git rebase -i HEAD~3
+   ```
+
+2. **Work Offline** ✅
+   - Commit without internet connection
+   - Full version control locally
+   - Push when ready and online
+
+3. **Organize Your Work** ✅
+   - Group related commits
+   - Create logical checkpoints
+   - Clean up before sharing
+
+4. **Reduce Remote Noise** ✅
+   - Don't push "WIP" commits
+   - Don't push broken code
+   - Only share polished work
+
+### Workflow Pattern
+
+```bash
+# Day 1: Work locally
+git commit -m "feat: initial structure"
+git commit -m "feat: add basic logic"
+git commit -m "fix: typo"
+# Don't push yet - still working
+
+# Day 2: Continue working
+git commit -m "test: add unit tests"
+git commit -m "refactor: improve naming"
+# Still not pushing
+
+# Day 3: Ready to share
+# Run final checks
+cargo test && cargo clippy
+# Everything looks good? NOW push
+git push -u origin feature/my-feature
 ```
 
 ## Why Use Feature Branches?
@@ -321,24 +421,67 @@ This means:
 
 ## Quick Reference
 
+### Recommended Workflow
+
 ```bash
-# Start work
+# 1. Start work
 git checkout development && git pull
 git checkout -b feature/my-feature
 
-# Work and commit
-git add . && git commit -m "feat: description"
+# 2. Work and commit LOCALLY (repeat as needed)
+# Edit files...
+git add .
+git commit -m "feat: description"
 
-# Push (first time)
+# More work...
+git commit -m "test: add tests"
+
+# More work...
+git commit -m "docs: update docs"
+
+# 3. Verify before pushing
+cargo test
+cargo clippy
+
+# 4. Push when ready (DELIBERATE action)
 git push -u origin feature/my-feature
 
-# Push (subsequent times)
-git push
+# 5. Create PR on GitHub (manual)
 
-# Create PR on GitHub
-# After merge, cleanup
+# 6. After merge, cleanup
 git checkout development && git pull
 git branch -d feature/my-feature
+```
+
+### Anti-Pattern to Avoid
+
+```bash
+# ❌ DON'T: Commit and immediately push
+git commit -m "WIP"
+git push  # Too soon!
+
+# ❌ DON'T: Push broken code
+git commit -m "doesn't work yet"
+git push  # Tests failing!
+
+# ❌ DON'T: Push every tiny change
+git commit -m "fix typo"
+git push
+git commit -m "fix another typo"
+git push
+git commit -m "oops one more"
+git push  # Noisy!
+```
+
+### Best Practice Pattern
+
+```bash
+# ✅ DO: Accumulate commits, push once ready
+git commit -m "feat: initial implementation"
+git commit -m "test: add comprehensive tests"
+git commit -m "docs: document new feature"
+# All tests pass? Good to share!
+git push -u origin feature/my-feature
 ```
 
 ## Branch Protection Rules (Recommended)
@@ -359,6 +502,10 @@ git branch -d feature/my-feature
 | ✅ DO | ❌ DON'T |
 |-------|----------|
 | Use feature branches | Push directly to `main` or `development` |
+| Commit locally first | Push immediately after every commit |
+| Accumulate related commits | Push "WIP" or broken commits |
+| Test before pushing | Push untested code |
+| Push when ready to share | Push work-in-progress constantly |
 | Create PRs for review | Merge without CI passing |
 | Follow naming conventions | Use vague branch names |
 | Write clear commit messages | Commit "WIP" or "fixes" |
@@ -368,4 +515,16 @@ git branch -d feature/my-feature
 
 ---
 
-**Remember**: Feature branches keep your workflow clean, CI efficient, and enable better collaboration! 🚀
+## Key Takeaways
+
+1. **Commit frequently** - Save your work locally often
+2. **Push deliberately** - Only push when ready to share
+3. **Test before pushing** - Verify quality locally first
+4. **Use feature branches** - Never push directly to main/development
+5. **Wait for confirmation** - Don't automate the push step
+
+**Remember**: 
+- **Commit** = Save your work (local, frequent, safe)
+- **Push** = Share your work (remote, deliberate, reviewed)
+
+Feature branches + local commits keep your workflow clean, CI efficient, and enable better collaboration! 🚀
