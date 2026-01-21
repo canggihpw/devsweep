@@ -367,7 +367,6 @@ fn test_nodejs_checker_returns_valid_structure() {
     // All items should have valid structure
     for item in result.items {
         assert!(!item.item_type.is_empty());
-        // size is u64, always valid
-        assert!(item.size >= 0);
+        // size is u64, always non-negative by type
     }
 }
