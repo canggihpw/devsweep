@@ -1,4 +1,6 @@
-use crate::types::{CheckResult, CleanupItem, ItemDetail, OldVersionInfo, PackageInfo, UnneededPackage};
+use crate::types::{
+    CheckResult, CleanupItem, ItemDetail, OldVersionInfo, PackageInfo, UnneededPackage,
+};
 use crate::utils::{format_size, get_dir_size, home_dir, run_command, sort_versions};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -109,10 +111,14 @@ pub fn check_homebrew() -> CheckResult {
                     })
                     .collect();
 
-                let item = CleanupItem::new("Old Package Versions", total_old_size, &format_size(total_old_size))
-                    .with_safe_to_delete(true)
-                    .with_cleanup_command("brew cleanup")
-                    .with_details(details);
+                let item = CleanupItem::new(
+                    "Old Package Versions",
+                    total_old_size,
+                    &format_size(total_old_size),
+                )
+                .with_safe_to_delete(true)
+                .with_cleanup_command("brew cleanup")
+                .with_details(details);
                 result.add_item(item);
                 result.extra_data.old_versions = Some(old_versions_info);
             }
@@ -196,10 +202,19 @@ pub fn check_homebrew() -> CheckResult {
         result.extra_data.leaf_packages = Some(leaf_list.clone());
 
         let deprecated_or_replaced: HashMap<&str, &str> = [
-            ("openssl@1.1", "Deprecated - openssl@3 is the current version"),
+            (
+                "openssl@1.1",
+                "Deprecated - openssl@3 is the current version",
+            ),
             ("youtube-dl", "Unmaintained - yt-dlp is the active fork"),
-            ("python@3.9", "Old Python version - consider if still needed"),
-            ("python@3.10", "Older Python version - check if projects need it"),
+            (
+                "python@3.9",
+                "Old Python version - consider if still needed",
+            ),
+            (
+                "python@3.10",
+                "Older Python version - check if projects need it",
+            ),
             ("node@16", "Old Node.js LTS - consider upgrading"),
             ("node@18", "Older Node.js LTS - check if still needed"),
         ]
@@ -230,7 +245,9 @@ pub fn check_homebrew() -> CheckResult {
         if !potentially_unneeded.is_empty() && total_unneeded_size > 0 {
             let details: Vec<ItemDetail> = potentially_unneeded
                 .iter()
-                .map(|p| ItemDetail::new(&p.package, p.size, &p.size_str).with_extra_info(&p.reason))
+                .map(|p| {
+                    ItemDetail::new(&p.package, p.size, &p.size_str).with_extra_info(&p.reason)
+                })
                 .collect();
 
             let item = CleanupItem::new(

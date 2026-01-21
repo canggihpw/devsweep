@@ -90,6 +90,12 @@ pub struct DevSweep {
     pub cache_ttls: Vec<CacheTTLSetting>,
 }
 
+impl Default for DevSweep {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DevSweep {
     pub fn new() -> Self {
         let backend = Arc::new(Mutex::new(StorageBackend::new()));

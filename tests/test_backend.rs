@@ -132,19 +132,18 @@ fn test_get_all_items() {
 #[test]
 fn test_get_quarantine_stats() {
     let backend = StorageBackend::new();
-    let stats = backend.get_quarantine_stats();
+    let _stats = backend.get_quarantine_stats();
 
     // Stats should be non-negative (may have existing data from previous runs)
-    assert!(stats.total_items_cleaned >= 0);
-    assert!(stats.quarantine_size >= 0);
+    // Stats fields are unsigned integers, always non-negative by type
 }
 
 #[test]
 fn test_get_quarantine_records() {
     let backend = StorageBackend::new();
-    let records = backend.get_quarantine_records();
+    let _records = backend.get_quarantine_records();
     // Just verify it doesn't crash
-    assert!(records.len() >= 0);
+    // records.len() is usize, always non-negative by type
 }
 
 #[test]

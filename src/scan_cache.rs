@@ -187,11 +187,7 @@ impl ScanCache {
     pub fn load() -> Self {
         let cache_path = Self::cache_file_path();
         let mut cache = if let Ok(data) = fs::read_to_string(&cache_path) {
-            if let Ok(cache) = serde_json::from_str(&data) {
-                cache
-            } else {
-                Self::new()
-            }
+            serde_json::from_str(&data).unwrap_or_default()
         } else {
             Self::new()
         };

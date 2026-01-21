@@ -19,12 +19,12 @@ impl DevSweep {
                     .timestamp
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .ok()
-                    .and_then(|d| {
+                    .map(|d| {
                         let secs = d.as_secs();
                         let datetime = chrono::DateTime::<chrono::Local>::from(
                             SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(secs),
                         );
-                        Some(datetime.format("%Y-%m-%d %H:%M:%S").to_string())
+                        datetime.format("%Y-%m-%d %H:%M:%S").to_string()
                     })
                     .unwrap_or_else(|| "Unknown".to_string());
 

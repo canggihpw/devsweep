@@ -1,7 +1,7 @@
 use crate::types::{CheckResult, CleanupItem, ItemDetail};
 use crate::utils::{format_size, get_dir_size};
 use dirs::home_dir;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn check_system_logs() -> CheckResult {
     let mut result = CheckResult::new("System Logs & Crash Reports");
@@ -26,7 +26,7 @@ pub fn check_system_logs() -> CheckResult {
     result
 }
 
-fn check_user_logs(result: &mut CheckResult, home: &PathBuf) {
+fn check_user_logs(result: &mut CheckResult, home: &Path) {
     let user_logs = home.join("Library/Logs");
     if !user_logs.exists() {
         return;
@@ -54,10 +54,7 @@ fn check_user_logs(result: &mut CheckResult, home: &PathBuf) {
 
             // Only include items > 5MB
             if size > 5 * 1024 * 1024 {
-                log_items.push(
-                    ItemDetail::new(&name, size, &format_size(size))
-                        .with_path(path)
-                );
+                log_items.push(ItemDetail::new(&name, size, &format_size(size)).with_path(path));
                 total_size += size;
             }
         }
@@ -66,15 +63,21 @@ fn check_user_logs(result: &mut CheckResult, home: &PathBuf) {
     if !log_items.is_empty() {
         log_items.sort_by(|a, b| b.size.cmp(&a.size));
         result.add_item(
-            CleanupItem::new("Application Logs (>5MB)", total_size, &format_size(total_size))
-                .with_details(log_items)
-                .with_safe_to_delete(true)
-                .with_warning("Logs are useful for debugging - only delete if not investigating issues")
+            CleanupItem::new(
+                "Application Logs (>5MB)",
+                total_size,
+                &format_size(total_size),
+            )
+            .with_details(log_items)
+            .with_safe_to_delete(true)
+            .with_warning(
+                "Logs are useful for debugging - only delete if not investigating issues",
+            ),
         );
     }
 }
 
-fn check_crash_reports(result: &mut CheckResult, home: &PathBuf) {
+fn check_crash_reports(result: &mut CheckResult, home: &Path) {
     let mut crash_items: Vec<ItemDetail> = Vec::new();
     let mut total_size: u64 = 0;
 
@@ -82,10 +85,11 @@ fn check_crash_reports(result: &mut CheckResult, home: &PathBuf) {
     let diag_reports = home.join("Library/Logs/DiagnosticReports");
     if diag_reports.exists() {
         let size = get_dir_size(&diag_reports);
-        if size > 1024 * 1024 { // > 1MB
+        if size > 1024 * 1024 {
+            // > 1MB
             crash_items.push(
                 ItemDetail::new("User Crash Reports", size, &format_size(size))
-                    .with_path(diag_reports)
+                    .with_path(diag_reports),
             );
             total_size += size;
         }
@@ -104,10 +108,11 @@ fn check_crash_reports(result: &mut CheckResult, home: &PathBuf) {
     let core_analytics = home.join("Library/Logs/CoreAnalytics");
     if core_analytics.exists() {
         let size = get_dir_size(&core_analytics);
-        if size > 1024 * 1024 { // > 1MB
+        if size > 1024 * 1024 {
+            // > 1MB
             crash_items.push(
                 ItemDetail::new("CoreAnalytics Data", size, &format_size(size))
-                    .with_path(core_analytics)
+                    .with_path(core_analytics),
             );
             total_size += size;
         }
@@ -117,10 +122,11 @@ fn check_crash_reports(result: &mut CheckResult, home: &PathBuf) {
     let spotlight_diag = home.join("Library/Logs/Spotlight");
     if spotlight_diag.exists() {
         let size = get_dir_size(&spotlight_diag);
-        if size > 5 * 1024 * 1024 { // > 5MB
+        if size > 5 * 1024 * 1024 {
+            // > 5MB
             crash_items.push(
                 ItemDetail::new("Spotlight Logs", size, &format_size(size))
-                    .with_path(spotlight_diag)
+                    .with_path(spotlight_diag),
             );
             total_size += size;
         }
@@ -128,14 +134,18 @@ fn check_crash_reports(result: &mut CheckResult, home: &PathBuf) {
 
     if !crash_items.is_empty() {
         result.add_item(
-            CleanupItem::new("Crash Reports & Diagnostics", total_size, &format_size(total_size))
-                .with_details(crash_items)
-                .with_safe_to_delete(true)
+            CleanupItem::new(
+                "Crash Reports & Diagnostics",
+                total_size,
+                &format_size(total_size),
+            )
+            .with_details(crash_items)
+            .with_safe_to_delete(true),
         );
     }
 }
 
-fn check_system_diagnostics(result: &mut CheckResult, home: &PathBuf) {
+fn check_system_diagnostics(result: &mut CheckResult, home: &Path) {
     let mut diag_items: Vec<ItemDetail> = Vec::new();
     let mut total_size: u64 = 0;
 
@@ -143,10 +153,11 @@ fn check_system_diagnostics(result: &mut CheckResult, home: &PathBuf) {
     let asl_logs = home.join("Library/Logs/asl");
     if asl_logs.exists() {
         let size = get_dir_size(&asl_logs);
-        if size > 10 * 1024 * 1024 { // > 10MB
+        if size > 10 * 1024 * 1024 {
+            // > 10MB
             diag_items.push(
                 ItemDetail::new("Apple System Logs (ASL)", size, &format_size(size))
-                    .with_path(asl_logs)
+                    .with_path(asl_logs),
             );
             total_size += size;
         }
@@ -156,10 +167,11 @@ fn check_system_diagnostics(result: &mut CheckResult, home: &PathBuf) {
     let console_reports = home.join("Library/Logs/Console");
     if console_reports.exists() {
         let size = get_dir_size(&console_reports);
-        if size > 1024 * 1024 { // > 1MB
+        if size > 1024 * 1024 {
+            // > 1MB
             diag_items.push(
                 ItemDetail::new("Console Saved Logs", size, &format_size(size))
-                    .with_path(console_reports)
+                    .with_path(console_reports),
             );
             total_size += size;
         }
@@ -169,10 +181,10 @@ fn check_system_diagnostics(result: &mut CheckResult, home: &PathBuf) {
     let install_logs = home.join("Library/Logs/Install Application");
     if install_logs.exists() {
         let size = get_dir_size(&install_logs);
-        if size > 5 * 1024 * 1024 { // > 5MB
+        if size > 5 * 1024 * 1024 {
+            // > 5MB
             diag_items.push(
-                ItemDetail::new("Install Logs", size, &format_size(size))
-                    .with_path(install_logs)
+                ItemDetail::new("Install Logs", size, &format_size(size)).with_path(install_logs),
             );
             total_size += size;
         }
@@ -182,10 +194,11 @@ fn check_system_diagnostics(result: &mut CheckResult, home: &PathBuf) {
     let jetbrains_logs = home.join("Library/Logs/JetBrains");
     if jetbrains_logs.exists() {
         let size = get_dir_size(&jetbrains_logs);
-        if size > 10 * 1024 * 1024 { // > 10MB
+        if size > 10 * 1024 * 1024 {
+            // > 10MB
             diag_items.push(
                 ItemDetail::new("JetBrains IDE Logs", size, &format_size(size))
-                    .with_path(jetbrains_logs)
+                    .with_path(jetbrains_logs),
             );
             total_size += size;
         }
@@ -193,14 +206,18 @@ fn check_system_diagnostics(result: &mut CheckResult, home: &PathBuf) {
 
     if !diag_items.is_empty() {
         result.add_item(
-            CleanupItem::new("System Diagnostic Data", total_size, &format_size(total_size))
-                .with_details(diag_items)
-                .with_safe_to_delete(true)
+            CleanupItem::new(
+                "System Diagnostic Data",
+                total_size,
+                &format_size(total_size),
+            )
+            .with_details(diag_items)
+            .with_safe_to_delete(true),
         );
     }
 }
 
-fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
+fn check_app_logs(result: &mut CheckResult, home: &Path) {
     let mut app_log_items: Vec<ItemDetail> = Vec::new();
     let mut total_size: u64 = 0;
 
@@ -208,10 +225,10 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let adobe_logs = home.join("Library/Logs/Adobe");
     if adobe_logs.exists() {
         let size = get_dir_size(&adobe_logs);
-        if size > 10 * 1024 * 1024 { // > 10MB
+        if size > 10 * 1024 * 1024 {
+            // > 10MB
             app_log_items.push(
-                ItemDetail::new("Adobe Logs", size, &format_size(size))
-                    .with_path(adobe_logs)
+                ItemDetail::new("Adobe Logs", size, &format_size(size)).with_path(adobe_logs),
             );
             total_size += size;
         }
@@ -221,10 +238,11 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let microsoft_logs = home.join("Library/Logs/Microsoft");
     if microsoft_logs.exists() {
         let size = get_dir_size(&microsoft_logs);
-        if size > 10 * 1024 * 1024 { // > 10MB
+        if size > 10 * 1024 * 1024 {
+            // > 10MB
             app_log_items.push(
                 ItemDetail::new("Microsoft Logs", size, &format_size(size))
-                    .with_path(microsoft_logs)
+                    .with_path(microsoft_logs),
             );
             total_size += size;
         }
@@ -234,10 +252,11 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let chrome_crash = home.join("Library/Application Support/Google/Chrome/Crash Reports");
     if chrome_crash.exists() {
         let size = get_dir_size(&chrome_crash);
-        if size > 5 * 1024 * 1024 { // > 5MB
+        if size > 5 * 1024 * 1024 {
+            // > 5MB
             app_log_items.push(
                 ItemDetail::new("Chrome Crash Reports", size, &format_size(size))
-                    .with_path(chrome_crash)
+                    .with_path(chrome_crash),
             );
             total_size += size;
         }
@@ -247,10 +266,11 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let firefox_crash = home.join("Library/Application Support/Firefox/Crash Reports");
     if firefox_crash.exists() {
         let size = get_dir_size(&firefox_crash);
-        if size > 5 * 1024 * 1024 { // > 5MB
+        if size > 5 * 1024 * 1024 {
+            // > 5MB
             app_log_items.push(
                 ItemDetail::new("Firefox Crash Reports", size, &format_size(size))
-                    .with_path(firefox_crash)
+                    .with_path(firefox_crash),
             );
             total_size += size;
         }
@@ -260,10 +280,10 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let slack_logs = home.join("Library/Application Support/Slack/logs");
     if slack_logs.exists() {
         let size = get_dir_size(&slack_logs);
-        if size > 10 * 1024 * 1024 { // > 10MB
+        if size > 10 * 1024 * 1024 {
+            // > 10MB
             app_log_items.push(
-                ItemDetail::new("Slack Logs", size, &format_size(size))
-                    .with_path(slack_logs)
+                ItemDetail::new("Slack Logs", size, &format_size(size)).with_path(slack_logs),
             );
             total_size += size;
         }
@@ -273,10 +293,10 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let discord_logs = home.join("Library/Application Support/discord/logs");
     if discord_logs.exists() {
         let size = get_dir_size(&discord_logs);
-        if size > 5 * 1024 * 1024 { // > 5MB
+        if size > 5 * 1024 * 1024 {
+            // > 5MB
             app_log_items.push(
-                ItemDetail::new("Discord Logs", size, &format_size(size))
-                    .with_path(discord_logs)
+                ItemDetail::new("Discord Logs", size, &format_size(size)).with_path(discord_logs),
             );
             total_size += size;
         }
@@ -286,11 +306,10 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let zoom_logs = home.join("Library/Logs/zoom.us");
     if zoom_logs.exists() {
         let size = get_dir_size(&zoom_logs);
-        if size > 10 * 1024 * 1024 { // > 10MB
-            app_log_items.push(
-                ItemDetail::new("Zoom Logs", size, &format_size(size))
-                    .with_path(zoom_logs)
-            );
+        if size > 10 * 1024 * 1024 {
+            // > 10MB
+            app_log_items
+                .push(ItemDetail::new("Zoom Logs", size, &format_size(size)).with_path(zoom_logs));
             total_size += size;
         }
     }
@@ -299,10 +318,10 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let figma_logs = home.join("Library/Application Support/Figma/logs");
     if figma_logs.exists() {
         let size = get_dir_size(&figma_logs);
-        if size > 5 * 1024 * 1024 { // > 5MB
+        if size > 5 * 1024 * 1024 {
+            // > 5MB
             app_log_items.push(
-                ItemDetail::new("Figma Logs", size, &format_size(size))
-                    .with_path(figma_logs)
+                ItemDetail::new("Figma Logs", size, &format_size(size)).with_path(figma_logs),
             );
             total_size += size;
         }
@@ -312,10 +331,10 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     let spotify_prefs = home.join("Library/Application Support/Spotify/PersistentCache");
     if spotify_prefs.exists() {
         let size = get_dir_size(&spotify_prefs);
-        if size > 100 * 1024 * 1024 { // > 100MB
+        if size > 100 * 1024 * 1024 {
+            // > 100MB
             app_log_items.push(
-                ItemDetail::new("Spotify Cache", size, &format_size(size))
-                    .with_path(spotify_prefs)
+                ItemDetail::new("Spotify Cache", size, &format_size(size)).with_path(spotify_prefs),
             );
             total_size += size;
         }
@@ -324,9 +343,13 @@ fn check_app_logs(result: &mut CheckResult, home: &PathBuf) {
     if !app_log_items.is_empty() {
         app_log_items.sort_by(|a, b| b.size.cmp(&a.size));
         result.add_item(
-            CleanupItem::new("Application Logs & Crash Reports", total_size, &format_size(total_size))
-                .with_details(app_log_items)
-                .with_safe_to_delete(true)
+            CleanupItem::new(
+                "Application Logs & Crash Reports",
+                total_size,
+                &format_size(total_size),
+            )
+            .with_details(app_log_items)
+            .with_safe_to_delete(true),
         );
     }
 }
@@ -352,11 +375,12 @@ fn check_system_level_logs(result: &mut CheckResult) {
             if log_path.exists() {
                 if let Ok(metadata) = std::fs::metadata(&log_path) {
                     let size = metadata.len();
-                    if size > 10 * 1024 * 1024 { // > 10MB
+                    if size > 10 * 1024 * 1024 {
+                        // > 10MB
                         sys_log_items.push(
                             ItemDetail::new(description, size, &format_size(size))
                                 .with_path(log_path)
-                                .with_extra_info("May require admin privileges to delete")
+                                .with_extra_info("May require admin privileges to delete"),
                         );
                         total_size += size;
                     }
@@ -381,11 +405,16 @@ fn check_system_level_logs(result: &mut CheckResult) {
                 }
             }
 
-            if archived_size > 50 * 1024 * 1024 { // > 50MB
+            if archived_size > 50 * 1024 * 1024 {
+                // > 50MB
                 sys_log_items.push(
-                    ItemDetail::new(&format!("Archived Logs ({} files)", archived_count), archived_size, &format_size(archived_size))
-                        .with_path(var_log.clone())
-                        .with_extra_info("May require admin privileges to delete")
+                    ItemDetail::new(
+                        &format!("Archived Logs ({} files)", archived_count),
+                        archived_size,
+                        &format_size(archived_size),
+                    )
+                    .with_path(var_log.clone())
+                    .with_extra_info("May require admin privileges to delete"),
                 );
                 total_size += archived_size;
             }
@@ -399,11 +428,12 @@ fn check_system_level_logs(result: &mut CheckResult) {
         let diag_messages = private_var_log.join("DiagnosticMessages");
         if diag_messages.exists() {
             let size = get_dir_size(&diag_messages);
-            if size > 100 * 1024 * 1024 { // > 100MB
+            if size > 100 * 1024 * 1024 {
+                // > 100MB
                 sys_log_items.push(
                     ItemDetail::new("Diagnostic Messages", size, &format_size(size))
                         .with_path(diag_messages)
-                        .with_extra_info("May require admin privileges to delete")
+                        .with_extra_info("May require admin privileges to delete"),
                 );
                 total_size += size;
             }
@@ -412,9 +442,13 @@ fn check_system_level_logs(result: &mut CheckResult) {
 
     if !sys_log_items.is_empty() {
         result.add_item(
-            CleanupItem::new("System Logs (may need admin)", total_size, &format_size(total_size))
-                .with_details(sys_log_items)
-                .with_warning("Some items may require administrator privileges to delete")
+            CleanupItem::new(
+                "System Logs (may need admin)",
+                total_size,
+                &format_size(total_size),
+            )
+            .with_details(sys_log_items)
+            .with_warning("Some items may require administrator privileges to delete"),
         );
     }
 }

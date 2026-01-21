@@ -35,7 +35,15 @@ pub fn check_docker() -> CheckResult {
     }
 
     // Try to get reclaimable space from docker system df
-    if let Some(df_output) = run_command("docker", &["system", "df", "--format", "{{.Type}}\t{{.Size}}\t{{.Reclaimable}}"]) {
+    if let Some(df_output) = run_command(
+        "docker",
+        &[
+            "system",
+            "df",
+            "--format",
+            "{{.Type}}\t{{.Size}}\t{{.Reclaimable}}",
+        ],
+    ) {
         let mut total_reclaimable = 0u64;
         for line in df_output.lines() {
             let parts: Vec<&str> = line.split('\t').collect();
@@ -49,9 +57,13 @@ pub fn check_docker() -> CheckResult {
         }
 
         if total_reclaimable > 0 {
-            let item = CleanupItem::new("Docker Reclaimable Space", total_reclaimable, &format_size(total_reclaimable))
-                .with_safe_to_delete(true)
-                .with_cleanup_command("docker system prune");
+            let item = CleanupItem::new(
+                "Docker Reclaimable Space",
+                total_reclaimable,
+                &format_size(total_reclaimable),
+            )
+            .with_safe_to_delete(true)
+            .with_cleanup_command("docker system prune");
             result.add_item(item);
         }
     }
@@ -77,5 +89,8 @@ fn parse_docker_size(s: &str) -> Option<u64> {
         return None;
     };
 
-    num_str.parse::<f64>().ok().map(|n| (n * unit as f64) as u64)
+    num_str
+        .parse::<f64>()
+        .ok()
+        .map(|n| (n * unit as f64) as u64)
 }

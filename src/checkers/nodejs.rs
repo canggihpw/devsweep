@@ -71,31 +71,31 @@ mod tests {
         let result = check_npm_yarn();
         assert_eq!(result.name, "Node.js Package Managers");
         // Result may or may not have items depending on system state
-        assert!(result.total_size >= 0);
+        // total_size is u64, always non-negative by type
     }
 
     #[test]
     fn test_npm_cache_detection() {
         // This test verifies the function doesn't crash
         // Actual cache presence depends on system configuration
-        let result = check_npm_yarn();
+        let _result = check_npm_yarn();
 
         // If npm is installed, we should get a valid result
         if let Some(_npm_cache) = run_command("npm", &["config", "get", "cache"]) {
             // Test passed - npm is available
-            assert!(result.items.len() >= 0);
+            // items.len() is usize, always non-negative by type
         }
     }
 
     #[test]
     fn test_yarn_cache_detection() {
         // This test verifies the function doesn't crash
-        let result = check_npm_yarn();
+        let _result = check_npm_yarn();
 
         // If yarn is installed, we should get a valid result
         if let Some(_yarn_cache) = run_command("yarn", &["cache", "dir"]) {
             // Test passed - yarn is available
-            assert!(result.items.len() >= 0);
+            // items.len() is usize, always non-negative by type
         }
     }
 
@@ -129,7 +129,7 @@ mod tests {
         // Verify all items have required fields
         for item in result.items {
             assert!(!item.item_type.is_empty());
-            assert!(item.size >= 0);
+            // Size is u64, always non-negative by type
             assert!(!item.size_str.is_empty());
         }
     }
@@ -158,8 +158,8 @@ mod tests {
                 || item.item_type.contains("yarn cache")
                 || item.item_type.contains("pnpm cache")
             {
-                assert_eq!(
-                    item.safe_to_delete, true,
+                assert!(
+                    item.safe_to_delete,
                     "Cache '{}' should be marked as safe to delete",
                     item.item_type
                 );

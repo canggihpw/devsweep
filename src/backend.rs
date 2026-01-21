@@ -10,6 +10,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::SystemTime;
 
+// Type alias for checker functions to simplify type signatures
+type CheckerFn = fn() -> CheckResult;
+
 #[derive(Debug, Clone)]
 pub struct CategoryData {
     pub name: String,
@@ -50,7 +53,7 @@ impl StorageBackend {
     /// Scan with optional cache usage (incremental scanning)
     pub fn scan_with_cache(&mut self, use_cache: bool) -> Vec<CategoryData> {
         // Define all checks with their names (in desired display order)
-        let all_checks: Vec<(&str, fn() -> CheckResult)> = vec![
+        let all_checks: Vec<(&str, CheckerFn)> = vec![
             ("Docker", checkers::check_docker),
             ("Homebrew", checkers::check_homebrew),
             ("Node.js/npm/yarn", checkers::check_npm_yarn),

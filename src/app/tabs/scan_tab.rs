@@ -438,7 +438,7 @@ impl DevSweep {
                         .flex()
                         .flex_col()
                         .bg(Theme::base(self.theme_mode))
-                        .children(items.iter().enumerate().map(|(_item_idx, item)| {
+                        .children(items.iter().map(|item| {
                             let global_idx = self
                                 .all_items
                                 .iter()
