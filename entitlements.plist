@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Allow app to access user-selected files -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- Allow app to access files in user's home directory -->
+    <key>com.apple.security.files.home-directory.read-write</key>
+    <true/>
+
+    <!-- Allow network client (for Docker API if needed) -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!-- Disable App Sandbox to allow full disk access -->
+    <!-- Note: For distribution, proper sandboxing should be implemented -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+
+    <!-- Allow execution of subprocesses (for shell commands) -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- Disable library validation for development -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

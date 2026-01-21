@@ -1,0 +1,44 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="128" y="128" width="768" height="768" rx="174" fill="white" fill-opacity="0.03"/>
+    
+    <rect x="128" y="128" width="768" height="768" rx="174" fill="url(#midnight_bg)" stroke="#3A3A3C" stroke-width="4"/>
+    
+    <circle cx="512" cy="512" r="300" stroke="url(#blue_glow)" stroke-width="22" stroke-dasharray="2 35" stroke-linecap="round"/>
+    
+    <g transform="translate(512, 512) rotate(-45) translate(-512, -512)">
+        <path d="M380 550H644L670 850C670 861 661 870 650 870H374C363 870 354 861 354 850L380 550Z" fill="black" fill-opacity="0.4" transform="translate(12, 12)"/>
+        
+        <rect x="492" y="200" width="44" height="380" rx="22" fill="url(#silver_handle)" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="2"/>
+        
+        <path d="M380 550H644L670 850C670 861 661 870 650 870H374C363 870 354 861 354 850L380 550Z" fill="url(#cyan_glass)" stroke="#5AC8FA" stroke-width="3" stroke-opacity="0.5"/>
+        
+        <line x1="435" y1="580" x2="435" y2="840" stroke="#007AFF" stroke-width="10" stroke-linecap="round"/>
+        <line x1="512" y1="580" x2="512" y2="840" stroke="#007AFF" stroke-width="10" stroke-linecap="round"/>
+        <line x1="589" y1="580" x2="589" y2="840" stroke="#007AFF" stroke-width="10" stroke-linecap="round"/>
+    </g>
+
+    <path d="M128 300C128 200 200 128 300 128H724C824 128 896 200 896 300V320L128 420V300Z" fill="white" fill-opacity="0.05"/>
+
+    <defs>
+        <linearGradient id="midnight_bg" x1="512" y1="128" x2="512" y2="896" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#2C2C2E"/>
+            <stop offset="1" stop-color="#121212"/>
+        </linearGradient>
+        
+        <linearGradient id="blue_glow" x1="512" y1="212" x2="512" y2="812" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#0A84FF"/>
+            <stop offset="1" stop-color="#5E5CE6"/>
+        </linearGradient>
+        
+        <linearGradient id="silver_handle" x1="512" y1="200" x2="512" y2="580" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#F2F2F7"/>
+            <stop offset="0.5" stop-color="#AEAEB2"/>
+            <stop offset="1" stop-color="#636366"/>
+        </linearGradient>
+        
+        <linearGradient id="cyan_glass" x1="512" y1="550" x2="512" y2="870" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#5AC8FA" stop-opacity="0.4"/>
+            <stop offset="1" stop-color="#007AFF" stop-opacity="0.1"/>
+        </linearGradient>
+    </defs>
+</svg>

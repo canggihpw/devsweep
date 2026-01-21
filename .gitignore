@@ -1,0 +1,75 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+.cargo/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# App Bundle
+*.app
+*.dmg
+AppIcon.iconset/
+dmg_contents/
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.a
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+
+# Runtime data
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Cache and temporary files
+.cache/
+tmp/
+temp/
+
+# Generated icon files
+*.png
+!logo.icns
+
+# Environment
+.env
+.env.local
+
+# Test coverage
+tarpaulin-report.html
+cobertura.xml
+
+# Flamegraph
+flamegraph.svg
+perf.data
+perf.data.old
