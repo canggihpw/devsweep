@@ -13,7 +13,7 @@ use gpui::*;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use ui::sidebar::Tab;
-use ui::Theme;
+use ui::{Theme, ThemeMode};
 
 // UI Data structures
 #[derive(Clone)]
@@ -79,6 +79,7 @@ struct CacheTTLSetting {
 struct DevCleaner {
     backend: Arc<Mutex<StorageBackend>>,
     active_tab: Tab,
+    theme_mode: ThemeMode,
     is_scanning: bool,
     is_cleaning: bool,
     status_text: SharedString,
@@ -122,6 +123,7 @@ impl DevCleaner {
         Self {
             backend,
             active_tab: Tab::Scan,
+            theme_mode: ThemeMode::default(),
             is_scanning: false,
             is_cleaning: false,
             status_text: "Click 'Scan' to analyze your storage".into(),
@@ -620,7 +622,7 @@ impl Render for DevCleaner {
             .flex()
             .w_full()
             .h_full()
-            .bg(Theme::base())
+            .bg(Theme::base(self.theme_mode))
             // Sidebar
             .child(self.render_sidebar(cx))
             // Main content area
@@ -647,9 +649,9 @@ impl DevCleaner {
         div()
             .w(px(200.0))
             .h_full()
-            .bg(Theme::mantle())
+            .bg(Theme::mantle(self.theme_mode))
             .border_r_1()
-            .border_color(Theme::surface0())
+            .border_color(Theme::surface0(self.theme_mode))
             .flex()
             .flex_col()
             // Logo and title
@@ -662,13 +664,13 @@ impl DevCleaner {
                     .items_center()
                     .gap_2()
                     .border_b_1()
-                    .border_color(Theme::surface0())
-                    .child(svg().path("assets/image.svg").size(px(48.0)))
+                    .border_color(Theme::surface0(self.theme_mode))
+                    .child(svg().path(self.theme_mode.icon_path()).size(px(48.0)))
                     .child(
                         div()
                             .text_sm()
                             .font_weight(FontWeight::BOLD)
-                            .text_color(Theme::text())
+                            .text_color(Theme::text(self.theme_mode))
                             .child("DevSweep"),
                     ),
             )
@@ -686,28 +688,76 @@ impl DevCleaner {
                     .child(self.sidebar_item(Tab::Settings, active_tab == Tab::Settings, cx))
                     .child(self.sidebar_item(Tab::About, active_tab == Tab::About, cx)),
             )
-            // Storage info at bottom
+            // Theme toggle and storage info at bottom
             .child(
                 div()
                     .w_full()
                     .p_4()
                     .border_t_1()
-                    .border_color(Theme::surface0())
+                    .border_color(Theme::surface0(self.theme_mode))
                     .flex()
                     .flex_col()
-                    .gap_1()
+                    .gap_3()
+                    // Theme toggle
                     .child(
                         div()
-                            .text_xs()
-                            .text_color(Theme::subtext0())
-                            .child("Available Storage"),
+                            .id("theme-toggle")
+                            .w_full()
+                            .px_3()
+                            .py_2()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .rounded_md()
+                            .cursor_pointer()
+                            .bg(Theme::surface0(self.theme_mode))
+                            .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                            .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+                            .on_click(cx.listener(|this, _event, cx| {
+                                this.theme_mode = this.theme_mode.toggle();
+                                cx.notify();
+                            }))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(div().text_sm().child(if self.theme_mode.is_dark() {
+                                        "🌙"
+                                    } else {
+                                        "☀️"
+                                    }))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(Theme::text(self.theme_mode))
+                                            .child(if self.theme_mode.is_dark() {
+                                                "Dark Mode"
+                                            } else {
+                                                "Light Mode"
+                                            }),
+                                    ),
+                            ),
                     )
+                    // Storage info
                     .child(
                         div()
-                            .text_sm()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(Theme::green())
-                            .child(storage_available),
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(Theme::subtext0(self.theme_mode))
+                                    .child("Available Storage"),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_color(Theme::green(self.theme_mode))
+                                    .child(storage_available),
+                            ),
                     ),
             )
     }
@@ -729,7 +779,7 @@ impl DevCleaner {
             .rounded_md()
             .cursor_pointer()
             .bg(if is_active {
-                Theme::surface0()
+                Theme::surface0(self.theme_mode)
             } else {
                 Theme::transparent()
             })
@@ -737,7 +787,7 @@ impl DevCleaner {
                 if is_active {
                     style
                 } else {
-                    style.bg(Theme::surface0())
+                    style.bg(Theme::surface0(self.theme_mode))
                 }
             })
             .active(|style| style.opacity(0.7))
@@ -750,9 +800,9 @@ impl DevCleaner {
                 div()
                     .text_sm()
                     .text_color(if is_active {
-                        Theme::text()
+                        Theme::text(self.theme_mode)
                     } else {
-                        Theme::subtext0()
+                        Theme::subtext0(self.theme_mode)
                     })
                     .font_weight(if is_active {
                         FontWeight::SEMIBOLD
@@ -778,7 +828,7 @@ impl DevCleaner {
             .h_full()
             .flex()
             .flex_col()
-            .bg(Theme::base())
+            .bg(Theme::base(self.theme_mode))
             // Header
             .child(
                 div()
@@ -788,7 +838,7 @@ impl DevCleaner {
                     .items_center()
                     .justify_between()
                     .border_b_1()
-                    .border_color(Theme::surface0())
+                    .border_color(Theme::surface0(self.theme_mode))
                     .child(
                         div()
                             .flex()
@@ -798,13 +848,13 @@ impl DevCleaner {
                                 div()
                                     .text_xl()
                                     .font_weight(FontWeight::BOLD)
-                                    .text_color(Theme::text())
+                                    .text_color(Theme::text(self.theme_mode))
                                     .child("Scan & Clean"),
                             )
                             .child(
                                 div()
                                     .text_sm()
-                                    .text_color(Theme::subtext0())
+                                    .text_color(Theme::subtext0(self.theme_mode))
                                     .child(status_text),
                             ),
                     )
@@ -818,16 +868,17 @@ impl DevCleaner {
                                     div()
                                         .px_4()
                                         .py_2()
-                                        .bg(Theme::surface1())
+                                        .bg(Theme::surface1(self.theme_mode))
                                         .rounded_md()
                                         .child(
-                                            div().text_sm().text_color(Theme::subtext0()).child(
-                                                if is_scanning {
+                                            div()
+                                                .text_sm()
+                                                .text_color(Theme::subtext0(self.theme_mode))
+                                                .child(if is_scanning {
                                                     "Scanning..."
                                                 } else {
                                                     "Cleaning..."
-                                                },
-                                            ),
+                                                }),
                                         ),
                                 )
                             })
@@ -837,11 +888,15 @@ impl DevCleaner {
                                         .id("scan-btn")
                                         .px_4()
                                         .py_2()
-                                        .bg(Theme::blue())
+                                        .bg(Theme::blue(self.theme_mode))
                                         .rounded_md()
                                         .cursor_pointer()
-                                        .hover(|style| style.bg(Theme::sapphire()))
-                                        .active(|style| style.bg(Theme::blue_active()).opacity(0.9))
+                                        .hover(|style| style.bg(Theme::sapphire(self.theme_mode)))
+                                        .active(|style| {
+                                            style
+                                                .bg(Theme::blue_active(self.theme_mode))
+                                                .opacity(0.9)
+                                        })
                                         .on_click(cx.listener(|this, _event, cx| {
                                             if !this.is_scanning && !this.is_cleaning {
                                                 this.start_scan(true, cx);
@@ -850,7 +905,7 @@ impl DevCleaner {
                                         .child(
                                             div()
                                                 .text_sm()
-                                                .text_color(Theme::crust())
+                                                .text_color(Theme::crust(self.theme_mode))
                                                 .font_weight(FontWeight::SEMIBOLD)
                                                 .child("Scan"),
                                         ),
@@ -861,8 +916,10 @@ impl DevCleaner {
                                         .px_2()
                                         .py_2()
                                         .cursor_pointer()
-                                        .hover(|style| style.bg(Theme::surface0()))
-                                        .active(|style| style.bg(Theme::surface1()).opacity(0.9))
+                                        .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
+                                        .active(|style| {
+                                            style.bg(Theme::surface1(self.theme_mode)).opacity(0.9)
+                                        })
                                         .on_click(cx.listener(|this, _event, cx| {
                                             if !this.is_scanning && !this.is_cleaning {
                                                 this.start_scan(false, cx);
@@ -871,7 +928,7 @@ impl DevCleaner {
                                         .child(
                                             div()
                                                 .text_xs()
-                                                .text_color(Theme::subtext0())
+                                                .text_color(Theme::subtext0(self.theme_mode))
                                                 .child("Full Rescan"),
                                         ),
                                 )
@@ -884,7 +941,7 @@ impl DevCleaner {
                     .w_full()
                     .px_4()
                     .py_3()
-                    .bg(Theme::mantle())
+                    .bg(Theme::mantle(self.theme_mode))
                     .flex()
                     .items_center()
                     .justify_between()
@@ -901,14 +958,14 @@ impl DevCleaner {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(Theme::subtext0())
+                                            .text_color(Theme::subtext0(self.theme_mode))
                                             .child("Total Reclaimable:"),
                                     )
                                     .child(
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::BOLD)
-                                            .text_color(Theme::peach())
+                                            .text_color(Theme::peach(self.theme_mode))
                                             .child(total_reclaimable),
                                     ),
                             )
@@ -920,14 +977,14 @@ impl DevCleaner {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(Theme::subtext0())
+                                            .text_color(Theme::subtext0(self.theme_mode))
                                             .child("Selected:"),
                                     )
                                     .child(
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::BOLD)
-                                            .text_color(Theme::blue())
+                                            .text_color(Theme::blue(self.theme_mode))
                                             .child(format!(
                                                 "{} items ({})",
                                                 selected_count, selected_size
@@ -945,11 +1002,13 @@ impl DevCleaner {
                                     .id("select-all-btn")
                                     .px_4()
                                     .py_2()
-                                    .bg(Theme::surface0())
+                                    .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(Theme::surface1()))
-                                    .active(|style| style.bg(Theme::surface2()).opacity(0.9))
+                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                    .active(|style| {
+                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                    })
                                     .on_click(cx.listener(|this, _event, cx| {
                                         this.select_all(cx);
                                         cx.notify();
@@ -957,7 +1016,7 @@ impl DevCleaner {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(Theme::text())
+                                            .text_color(Theme::text(self.theme_mode))
                                             .child("Select All"),
                                     ),
                             )
@@ -966,11 +1025,13 @@ impl DevCleaner {
                                     .id("deselect-all-btn")
                                     .px_4()
                                     .py_2()
-                                    .bg(Theme::surface0())
+                                    .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(Theme::surface1()))
-                                    .active(|style| style.bg(Theme::surface2()).opacity(0.9))
+                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                    .active(|style| {
+                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                    })
                                     .on_click(cx.listener(|this, _event, cx| {
                                         this.deselect_all(cx);
                                         cx.notify();
@@ -978,7 +1039,7 @@ impl DevCleaner {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(Theme::text())
+                                            .text_color(Theme::text(self.theme_mode))
                                             .child("Deselect All"),
                                     ),
                             )
@@ -988,18 +1049,22 @@ impl DevCleaner {
                                         .id("clean-btn")
                                         .px_4()
                                         .py_2()
-                                        .bg(Theme::red())
+                                        .bg(Theme::red(self.theme_mode))
                                         .rounded_md()
                                         .cursor_pointer()
-                                        .hover(|style| style.bg(Theme::red_hover()))
-                                        .active(|style| style.bg(Theme::red_active()).opacity(0.9))
+                                        .hover(|style| style.bg(Theme::red_hover(self.theme_mode)))
+                                        .active(|style| {
+                                            style
+                                                .bg(Theme::red_active(self.theme_mode))
+                                                .opacity(0.9)
+                                        })
                                         .on_click(cx.listener(|this, _event, cx| {
                                             this.execute_cleanup(cx);
                                         }))
                                         .child(
                                             div()
                                                 .text_sm()
-                                                .text_color(Theme::crust())
+                                                .text_color(Theme::crust(self.theme_mode))
                                                 .font_weight(FontWeight::SEMIBOLD)
                                                 .child("Clean Selected"),
                                         ),
@@ -1010,12 +1075,12 @@ impl DevCleaner {
                                     div()
                                         .px_4()
                                         .py_2()
-                                        .bg(Theme::surface1())
+                                        .bg(Theme::surface1(self.theme_mode))
                                         .rounded_md()
                                         .child(
                                             div()
                                                 .text_sm()
-                                                .text_color(Theme::overlay0())
+                                                .text_color(Theme::overlay0(self.theme_mode))
                                                 .child("Clean Selected"),
                                         ),
                                 )
@@ -1065,7 +1130,7 @@ impl DevCleaner {
             .child(
                 div()
                     .text_sm()
-                    .text_color(Theme::subtext0())
+                    .text_color(Theme::subtext0(self.theme_mode))
                     .child(message.to_string()),
             )
     }
@@ -1084,7 +1149,7 @@ impl DevCleaner {
             .flex()
             .flex_col()
             .border_b_1()
-            .border_color(Theme::surface0())
+            .border_color(Theme::surface0(self.theme_mode))
             // Category header
             .child(
                 div()
@@ -1095,9 +1160,9 @@ impl DevCleaner {
                     .flex()
                     .items_center()
                     .gap_3()
-                    .bg(Theme::surface0())
-                    .hover(|style| style.bg(Theme::surface1()))
-                    .active(|style| style.bg(Theme::surface2()).opacity(0.9))
+                    .bg(Theme::surface0(self.theme_mode))
+                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
                     .cursor_pointer()
                     .on_click(cx.listener(move |this, _event, cx| {
                         this.toggle_category_expand(cat_idx, cx);
@@ -1106,7 +1171,7 @@ impl DevCleaner {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(Theme::subtext0())
+                            .text_color(Theme::subtext0(self.theme_mode))
                             .child(if expanded { "▼" } else { "▶" }),
                     )
                     // Checkbox
@@ -1118,12 +1183,12 @@ impl DevCleaner {
                             .rounded_sm()
                             .border_1()
                             .border_color(if category.checked {
-                                Theme::blue()
+                                Theme::blue(self.theme_mode)
                             } else {
-                                Theme::surface2()
+                                Theme::surface2(self.theme_mode)
                             })
                             .bg(if category.checked {
-                                Theme::blue()
+                                Theme::blue(self.theme_mode)
                             } else {
                                 Theme::transparent()
                             })
@@ -1137,7 +1202,12 @@ impl DevCleaner {
                                 cx.notify();
                             }))
                             .when(category.checked, |d| {
-                                d.child(div().text_xs().text_color(Theme::crust()).child("✓"))
+                                d.child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(Theme::crust(self.theme_mode))
+                                        .child("✓"),
+                                )
                             }),
                     )
                     .child(
@@ -1145,19 +1215,19 @@ impl DevCleaner {
                             .flex_1()
                             .text_sm()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(Theme::text())
+                            .text_color(Theme::text(self.theme_mode))
                             .child(category.name.clone()),
                     )
                     .child(
                         div()
                             .px_2()
                             .py_1()
-                            .bg(Theme::surface1())
+                            .bg(Theme::surface1(self.theme_mode))
                             .rounded_sm()
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(Theme::subtext0())
+                                    .text_color(Theme::subtext0(self.theme_mode))
                                     .child(format!("{} items", category.item_count)),
                             ),
                     )
@@ -1165,26 +1235,31 @@ impl DevCleaner {
                         div()
                             .text_sm()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(Theme::peach())
+                            .text_color(Theme::peach(self.theme_mode))
                             .child(category.size.clone()),
                     ),
             )
             // Items (if expanded)
             .when(expanded, |d| {
-                d.child(div().w_full().flex().flex_col().bg(Theme::base()).children(
-                    items.iter().enumerate().map(|(_item_idx, item)| {
-                        let global_idx = self
-                            .all_items
-                            .iter()
-                            .position(|i| {
-                                i.item_type == item.item_type
-                                    && i.path == item.path
-                                    && i.category_index == cat_idx
-                            })
-                            .unwrap_or(0);
-                        self.render_cleanup_item(item.clone(), global_idx, cx)
-                    }),
-                ))
+                d.child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .bg(Theme::base(self.theme_mode))
+                        .children(items.iter().enumerate().map(|(_item_idx, item)| {
+                            let global_idx = self
+                                .all_items
+                                .iter()
+                                .position(|i| {
+                                    i.item_type == item.item_type
+                                        && i.path == item.path
+                                        && i.category_index == cat_idx
+                                })
+                                .unwrap_or(0);
+                            self.render_cleanup_item(item.clone(), global_idx, cx)
+                        })),
+                )
             })
     }
 
@@ -1208,11 +1283,11 @@ impl DevCleaner {
             .flex()
             .items_center()
             .gap_3()
-            .hover(|style| style.bg(Theme::surface0()))
-            .active(|style| style.bg(Theme::surface1()).opacity(0.9))
+            .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
+            .active(|style| style.bg(Theme::surface1(self.theme_mode)).opacity(0.9))
             .cursor_pointer()
             .border_b_1()
-            .border_color(Theme::border_subtle())
+            .border_color(Theme::border_subtle(self.theme_mode))
             .on_click(cx.listener(move |this, _event, cx| {
                 this.toggle_item(global_idx, cx);
                 cx.notify();
@@ -1225,12 +1300,12 @@ impl DevCleaner {
                     .rounded_sm()
                     .border_1()
                     .border_color(if selected {
-                        Theme::blue()
+                        Theme::blue(self.theme_mode)
                     } else {
-                        Theme::surface2()
+                        Theme::surface2(self.theme_mode)
                     })
                     .bg(if selected {
-                        Theme::blue()
+                        Theme::blue(self.theme_mode)
                     } else {
                         Theme::transparent()
                     })
@@ -1238,7 +1313,12 @@ impl DevCleaner {
                     .items_center()
                     .justify_center()
                     .when(selected, |d| {
-                        d.child(div().text_xs().text_color(Theme::crust()).child("✓"))
+                        d.child(
+                            div()
+                                .text_xs()
+                                .text_color(Theme::crust(self.theme_mode))
+                                .child("✓"),
+                        )
                     }),
             )
             // Item info
@@ -1251,14 +1331,14 @@ impl DevCleaner {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(Theme::text())
+                            .text_color(Theme::text(self.theme_mode))
                             .child(item.item_type.clone()),
                     )
                     .when(!path_empty, |d| {
                         d.child(
                             div()
                                 .text_xs()
-                                .text_color(Theme::overlay0())
+                                .text_color(Theme::overlay0(self.theme_mode))
                                 .child(item.path.clone()),
                         )
                     }),
@@ -1269,9 +1349,14 @@ impl DevCleaner {
                     div()
                         .px_2()
                         .py_1()
-                        .bg(Theme::yellow())
+                        .bg(Theme::yellow(self.theme_mode))
                         .rounded_sm()
-                        .child(div().text_xs().text_color(Theme::crust()).child("⚠")),
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(Theme::crust(self.theme_mode))
+                                .child("⚠"),
+                        ),
                 )
             })
             // Safe badge
@@ -1280,16 +1365,21 @@ impl DevCleaner {
                     div()
                         .px_2()
                         .py_1()
-                        .bg(Theme::green())
+                        .bg(Theme::green(self.theme_mode))
                         .rounded_sm()
-                        .child(div().text_xs().text_color(Theme::crust()).child("Safe")),
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(Theme::crust(self.theme_mode))
+                                .child("Safe"),
+                        ),
                 )
             })
             // Size
             .child(
                 div()
                     .text_sm()
-                    .text_color(Theme::subtext1())
+                    .text_color(Theme::subtext1(self.theme_mode))
                     .child(item.size_str.clone()),
             )
     }
@@ -1308,7 +1398,7 @@ impl DevCleaner {
             .h_full()
             .flex()
             .flex_col()
-            .bg(Theme::base())
+            .bg(Theme::base(self.theme_mode))
             // Header
             .child(
                 div()
@@ -1318,14 +1408,14 @@ impl DevCleaner {
                     .items_center()
                     .justify_between()
                     .border_b_1()
-                    .border_color(Theme::surface0())
+                    .border_color(Theme::surface0(self.theme_mode))
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_4()
-                            .child(div().text_xl().font_weight(FontWeight::BOLD).text_color(Theme::text()).child("Quarantine"))
-                            .child(div().text_sm().text_color(Theme::subtext0()).child(status_text))
+                            .child(div().text_xl().font_weight(FontWeight::BOLD).text_color(Theme::text(self.theme_mode)).child("Quarantine"))
+                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child(status_text))
                     )
                     .child(
                         div()
@@ -1337,27 +1427,27 @@ impl DevCleaner {
                                     .id("refresh-quarantine-btn")
                                     .px_4()
                                     .py_2()
-                                    .bg(Theme::surface0())
+                                    .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(Theme::surface1()))
-                                    .active(|style| style.bg(Theme::surface2()).opacity(0.9))
+                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
                                     .on_click(cx.listener(|this, _event, cx| {
                                         this.refresh_quarantine();
                                         cx.notify();
                                     }))
-                                    .child(div().text_sm().text_color(Theme::text()).child("Refresh"))
+                                    .child(div().text_sm().text_color(Theme::text(self.theme_mode)).child("Refresh"))
                             )
                             .child(
                                 div()
                                     .id("open-finder-btn")
                                     .px_4()
                                     .py_2()
-                                    .bg(Theme::surface0())
+                                    .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(Theme::surface1()))
-                                    .active(|style| style.bg(Theme::surface2()).opacity(0.9))
+                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
                                     .on_click(cx.listener(|_this, _event, _cx| {
                                         if let Some(cache_dir) = dirs::cache_dir() {
                                             let quarantine_path = cache_dir.join("development-cleaner").join("quarantine");
@@ -1365,7 +1455,7 @@ impl DevCleaner {
                                             let _ = std::process::Command::new("open").arg(quarantine_path).spawn();
                                         }
                                     }))
-                                    .child(div().text_sm().text_color(Theme::text()).child("Open in Finder"))
+                                    .child(div().text_sm().text_color(Theme::text(self.theme_mode)).child("Open in Finder"))
                             )
                             .when(!records_empty && !is_cleaning, |d| {
                                 d.child(
@@ -1373,15 +1463,15 @@ impl DevCleaner {
                                         .id("clear-all-btn")
                                         .px_4()
                                         .py_2()
-                                        .bg(Theme::red())
+                                        .bg(Theme::red(self.theme_mode))
                                         .rounded_md()
                                         .cursor_pointer()
-                                        .hover(|style| style.bg(Theme::red_hover()))
-                                        .active(|style| style.bg(Theme::red_active()).opacity(0.9))
+                                        .hover(|style| style.bg(Theme::red_hover(self.theme_mode)))
+                                        .active(|style| style.bg(Theme::red_active(self.theme_mode)).opacity(0.9))
                                         .on_click(cx.listener(|this, _event, cx| {
                                             this.clear_all_quarantine(cx);
                                         }))
-                                        .child(div().text_sm().text_color(Theme::crust()).font_weight(FontWeight::SEMIBOLD).child("Delete All"))
+                                        .child(div().text_sm().text_color(Theme::crust(self.theme_mode)).font_weight(FontWeight::SEMIBOLD).child("Delete All"))
                                 )
                             })
                             .when(records_empty || is_cleaning, |d| {
@@ -1389,9 +1479,9 @@ impl DevCleaner {
                                     div()
                                         .px_4()
                                         .py_2()
-                                        .bg(Theme::surface1())
+                                        .bg(Theme::surface1(self.theme_mode))
                                         .rounded_md()
-                                        .child(div().text_sm().text_color(Theme::overlay0()).child("Delete All"))
+                                        .child(div().text_sm().text_color(Theme::overlay0(self.theme_mode)).child("Delete All"))
                                 )
                             })
                     )
@@ -1402,7 +1492,7 @@ impl DevCleaner {
                     .w_full()
                     .px_4()
                     .py_3()
-                    .bg(Theme::mantle())
+                    .bg(Theme::mantle(self.theme_mode))
                     .flex()
                     .items_center()
                     .gap_6()
@@ -1411,24 +1501,24 @@ impl DevCleaner {
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(div().text_sm().text_color(Theme::subtext0()).child("Quarantine Size:"))
-                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::peach()).child(total_size))
+                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Quarantine Size:"))
+                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::peach(self.theme_mode)).child(total_size))
                     )
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(div().text_sm().text_color(Theme::subtext0()).child("Total Items:"))
-                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::blue()).child(format!("{}", total_items)))
+                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Total Items:"))
+                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::blue(self.theme_mode)).child(format!("{}", total_items)))
                     )
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(div().text_sm().text_color(Theme::subtext0()).child("Records:"))
-                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::lavender()).child(format!("{}", records.len())))
+                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Records:"))
+                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::lavender(self.theme_mode)).child(format!("{}", records.len())))
                     )
             )
             // Info banner
@@ -1437,12 +1527,12 @@ impl DevCleaner {
                     .w_full()
                     .px_4()
                     .py_2()
-                    .bg(Theme::blue_tint())
+                    .bg(Theme::blue_tint(self.theme_mode))
                     .flex()
                     .items_center()
                     .gap_2()
                     .child(div().text_sm().child("ℹ️"))
-                    .child(div().text_sm().text_color(Theme::blue()).child("Deleted files are quarantined for undo support. They are automatically cleaned when exceeding 10GB."))
+                    .child(div().text_sm().text_color(Theme::blue(self.theme_mode)).child("Deleted files are quarantined for undo support. They are automatically cleaned when exceeding 10GB."))
             )
             // Records list
             .child(
@@ -1491,7 +1581,7 @@ impl DevCleaner {
             .flex()
             .flex_col()
             .border_b_1()
-            .border_color(Theme::surface0())
+            .border_color(Theme::surface0(self.theme_mode))
             // Record header
             .child(
                 div()
@@ -1502,9 +1592,9 @@ impl DevCleaner {
                     .flex()
                     .items_center()
                     .gap_3()
-                    .bg(Theme::surface0())
-                    .hover(|style| style.bg(Theme::surface1()))
-                    .active(|style| style.bg(Theme::surface2()).opacity(0.9))
+                    .bg(Theme::surface0(self.theme_mode))
+                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
                     .cursor_pointer()
                     .on_click(cx.listener(move |this, _event, cx| {
                         this.toggle_quarantine_record_expand(record_idx, cx);
@@ -1513,7 +1603,7 @@ impl DevCleaner {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(Theme::subtext0())
+                            .text_color(Theme::subtext0(self.theme_mode))
                             .child(if expanded { "▼" } else { "▶" }),
                     )
                     .child(
@@ -1526,7 +1616,7 @@ impl DevCleaner {
                                 div()
                                     .text_sm()
                                     .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(Theme::text())
+                                    .text_color(Theme::text(self.theme_mode))
                                     .child(record.timestamp.clone()),
                             )
                             .child(
@@ -1537,14 +1627,14 @@ impl DevCleaner {
                                     .child(
                                         div()
                                             .text_xs()
-                                            .text_color(Theme::green())
+                                            .text_color(Theme::green(self.theme_mode))
                                             .child(format!("✓ {}", record.success_count)),
                                     )
                                     .when(has_errors, |d| {
                                         d.child(
                                             div()
                                                 .text_xs()
-                                                .text_color(Theme::red())
+                                                .text_color(Theme::red(self.theme_mode))
                                                 .child(format!("✗ {}", record.error_count)),
                                         )
                                     }),
@@ -1554,12 +1644,12 @@ impl DevCleaner {
                         div()
                             .px_2()
                             .py_1()
-                            .bg(Theme::surface1())
+                            .bg(Theme::surface1(self.theme_mode))
                             .rounded_sm()
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(Theme::subtext0())
+                                    .text_color(Theme::subtext0(self.theme_mode))
                                     .child(format!("{} items", record.item_count)),
                             ),
                     )
@@ -1567,7 +1657,7 @@ impl DevCleaner {
                         div()
                             .text_sm()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(Theme::peach())
+                            .text_color(Theme::peach(self.theme_mode))
                             .child(record.total_size.clone()),
                     )
                     .when(can_undo, |d| {
@@ -1577,18 +1667,20 @@ impl DevCleaner {
                                 .id(SharedString::from(format!("undo-btn-{}", record_idx)))
                                 .px_3()
                                 .py_1()
-                                .bg(Theme::blue())
+                                .bg(Theme::blue(self.theme_mode))
                                 .rounded_md()
                                 .cursor_pointer()
-                                .hover(|style| style.bg(Theme::sapphire()))
-                                .active(|style| style.bg(Theme::blue_active()).opacity(0.9))
+                                .hover(|style| style.bg(Theme::sapphire(self.theme_mode)))
+                                .active(|style| {
+                                    style.bg(Theme::blue_active(self.theme_mode)).opacity(0.9)
+                                })
                                 .on_click(cx.listener(move |this, _event, cx| {
                                     this.undo_record(record_id_clone.clone(), cx);
                                 }))
                                 .child(
                                     div()
                                         .text_xs()
-                                        .text_color(Theme::crust())
+                                        .text_color(Theme::crust(self.theme_mode))
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .child("Undo All"),
                                 ),
@@ -1598,11 +1690,16 @@ impl DevCleaner {
             // Items (if expanded)
             .when(expanded, |d| {
                 d.child(
-                    div().w_full().flex().flex_col().bg(Theme::base()).children(
-                        items
-                            .iter()
-                            .map(|item| self.render_quarantine_item(item.clone(), cx)),
-                    ),
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .bg(Theme::base(self.theme_mode))
+                        .children(
+                            items
+                                .iter()
+                                .map(|item| self.render_quarantine_item(item.clone(), cx)),
+                        ),
                 )
             })
     }
@@ -1623,17 +1720,17 @@ impl DevCleaner {
             .flex()
             .items_center()
             .gap_3()
-            .hover(|style| style.bg(Theme::surface0()))
+            .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
             .border_b_1()
-            .border_color(Theme::border_subtle())
+            .border_color(Theme::border_subtle(self.theme_mode))
             .child(
                 div()
                     .text_sm()
                     .child(if success { "✓" } else { "✗" })
                     .text_color(if success {
-                        Theme::green()
+                        Theme::green(self.theme_mode)
                     } else {
-                        Theme::red()
+                        Theme::red(self.theme_mode)
                     }),
             )
             .child(
@@ -1645,20 +1742,20 @@ impl DevCleaner {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(Theme::text())
+                            .text_color(Theme::text(self.theme_mode))
                             .child(item.item_type.clone()),
                     )
                     .child(
                         div()
                             .text_xs()
-                            .text_color(Theme::overlay0())
+                            .text_color(Theme::overlay0(self.theme_mode))
                             .child(item.original_path.clone()),
                     )
                     .when(has_error, |d| {
                         d.child(
                             div()
                                 .text_xs()
-                                .text_color(Theme::red())
+                                .text_color(Theme::red(self.theme_mode))
                                 .child(item.error_message.clone()),
                         )
                     }),
@@ -1668,12 +1765,12 @@ impl DevCleaner {
                     div()
                         .px_2()
                         .py_1()
-                        .bg(Theme::surface1())
+                        .bg(Theme::surface1(self.theme_mode))
                         .rounded_sm()
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(Theme::subtext0())
+                                .text_color(Theme::subtext0(self.theme_mode))
                                 .child("Permanent"),
                         ),
                 )
@@ -1681,7 +1778,7 @@ impl DevCleaner {
             .child(
                 div()
                     .text_sm()
-                    .text_color(Theme::subtext1())
+                    .text_color(Theme::subtext1(self.theme_mode))
                     .child(item.size_str.clone()),
             )
             .when(can_delete, |d| {
@@ -1693,18 +1790,18 @@ impl DevCleaner {
                         )))
                         .px_3()
                         .py_1()
-                        .bg(Theme::red())
+                        .bg(Theme::red(self.theme_mode))
                         .rounded_md()
                         .cursor_pointer()
-                        .hover(|style| style.bg(Theme::red_hover()))
-                        .active(|style| style.bg(Theme::red_active()).opacity(0.9))
+                        .hover(|style| style.bg(Theme::red_hover(self.theme_mode)))
+                        .active(|style| style.bg(Theme::red_active(self.theme_mode)).opacity(0.9))
                         .on_click(cx.listener(move |this, _event, cx| {
                             this.delete_quarantine_item(record_id.to_string(), item_index, cx);
                         }))
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(Theme::crust())
+                                .text_color(Theme::crust(self.theme_mode))
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .child("Delete"),
                         ),
@@ -1720,7 +1817,7 @@ impl DevCleaner {
             .h_full()
             .flex()
             .flex_col()
-            .bg(Theme::base())
+            .bg(Theme::base(self.theme_mode))
             // Header
             .child(
                 div()
@@ -1730,23 +1827,23 @@ impl DevCleaner {
                     .items_center()
                     .justify_between()
                     .border_b_1()
-                    .border_color(Theme::surface0())
-                    .child(div().text_xl().font_weight(FontWeight::BOLD).text_color(Theme::text()).child("Settings"))
+                    .border_color(Theme::surface0(self.theme_mode))
+                    .child(div().text_xl().font_weight(FontWeight::BOLD).text_color(Theme::text(self.theme_mode)).child("Settings"))
                     .child(
                         div()
                             .id("reset-defaults-btn")
                             .px_4()
                             .py_2()
-                            .bg(Theme::surface0())
+                            .bg(Theme::surface0(self.theme_mode))
                             .rounded_md()
                             .cursor_pointer()
-                            .hover(|style| style.bg(Theme::surface1()))
-                            .active(|style| style.bg(Theme::surface2()).opacity(0.9))
+                            .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                            .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
                             .on_click(cx.listener(|this, _event, cx| {
                                 this.reset_cache_defaults(cx);
                                 cx.notify();
                             }))
-                            .child(div().text_sm().text_color(Theme::text()).child("Reset to Defaults"))
+                            .child(div().text_sm().text_color(Theme::text(self.theme_mode)).child("Reset to Defaults"))
                     )
             )
             // Content
@@ -1775,17 +1872,17 @@ impl DevCleaner {
                                             .flex()
                                             .flex_col()
                                             .gap_1()
-                                            .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).text_color(Theme::text()).child("Cache TTL Settings"))
-                                            .child(div().text_sm().text_color(Theme::subtext0()).child("Configure how long scan results are cached for each category."))
+                                            .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).text_color(Theme::text(self.theme_mode)).child("Cache TTL Settings"))
+                                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Configure how long scan results are cached for each category."))
                                     )
                                     // TTL list
                                     .child(
                                         div()
                                             .w_full()
-                                            .bg(Theme::surface0())
+                                            .bg(Theme::surface0(self.theme_mode))
                                             .rounded_lg()
                                             .border_1()
-                                            .border_color(Theme::surface1())
+                                            .border_color(Theme::surface1(self.theme_mode))
                                             .flex()
                                             .flex_col()
                                             .children(cache_ttls.iter().map(|ttl| {
@@ -1798,10 +1895,10 @@ impl DevCleaner {
                                 div()
                                     .w_full()
                                     .p_4()
-                                    .bg(Theme::blue_tint())
+                                    .bg(Theme::blue_tint(self.theme_mode))
                                     .rounded_lg()
                                     .border_1()
-                                    .border_color(Theme::blue_border())
+                                    .border_color(Theme::blue_border(self.theme_mode))
                                     .flex()
                                     .flex_col()
                                     .gap_3()
@@ -1811,9 +1908,9 @@ impl DevCleaner {
                                             .items_center()
                                             .gap_2()
                                             .child(div().text_base().child("💡"))
-                                            .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).text_color(Theme::blue()).child("Cache TTL Explained"))
+                                            .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).text_color(Theme::blue(self.theme_mode)).child("Cache TTL Explained"))
                                     )
-                                    .child(div().text_sm().text_color(Theme::subtext1()).child("TTL determines how long cached results remain valid. A value of 0 means always rescan."))
+                                    .child(div().text_sm().text_color(Theme::subtext1(self.theme_mode)).child("TTL determines how long cached results remain valid. A value of 0 means always rescan."))
                             )
                     )
             )
@@ -1836,12 +1933,12 @@ impl DevCleaner {
             .items_center()
             .justify_between()
             .border_b_1()
-            .border_color(Theme::surface1())
+            .border_color(Theme::surface1(self.theme_mode))
             .child(
                 div()
                     .flex_1()
                     .text_sm()
-                    .text_color(Theme::text())
+                    .text_color(Theme::text(self.theme_mode))
                     .child(setting.category.clone()),
             )
             .child(
@@ -1849,14 +1946,19 @@ impl DevCleaner {
                     .w(px(100.0))
                     .px_3()
                     .py_1()
-                    .bg(Theme::base())
+                    .bg(Theme::base(self.theme_mode))
                     .rounded_sm()
                     .border_1()
-                    .border_color(Theme::surface1())
+                    .border_color(Theme::surface1(self.theme_mode))
                     .flex()
                     .items_center()
                     .justify_center()
-                    .child(div().text_sm().text_color(Theme::text()).child(ttl_display)),
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(Theme::text(self.theme_mode))
+                            .child(ttl_display),
+                    ),
             )
     }
 
@@ -1868,7 +1970,7 @@ impl DevCleaner {
             .flex_col()
             .items_center()
             .justify_center()
-            .bg(Theme::base())
+            .bg(Theme::base(self.theme_mode))
             .gap_6()
             // Logo and title
             .child(
@@ -1879,20 +1981,20 @@ impl DevCleaner {
                     .gap_4()
                     .child(
                         svg()
-                            .path("assets/image.svg")
+                            .path(self.theme_mode.icon_path())
                             .size(px(80.0))
                     )
                     .child(
                         div()
                             .text_2xl()
                             .font_weight(FontWeight::BOLD)
-                            .text_color(Theme::text())
+                            .text_color(Theme::text(self.theme_mode))
                             .child("DevSweep")
                     )
                     .child(
                         div()
                             .text_sm()
-                            .text_color(Theme::subtext0())
+                            .text_color(Theme::subtext0(self.theme_mode))
                             .child("Version 0.1.0")
                     )
             )
@@ -1905,7 +2007,7 @@ impl DevCleaner {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(Theme::subtext1())
+                            .text_color(Theme::subtext1(self.theme_mode))
                             .child("A powerful tool for cleaning up development-related caches, temporary files, and unused data on your Mac.")
                     )
             )
@@ -1916,9 +2018,9 @@ impl DevCleaner {
                     .flex_col()
                     .gap_3()
                     .p_4()
-                    .bg(Theme::surface0())
+                    .bg(Theme::surface0(self.theme_mode))
                     .rounded_lg()
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).text_color(Theme::text()).child("Features"))
+                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).text_color(Theme::text(self.theme_mode)).child("Features"))
                     .child(self.feature_item("🔍", "Scan 16+ categories of development caches"))
                     .child(self.feature_item("🛡️", "Safe deletion with quarantine support"))
                     .child(self.feature_item("↩️", "Undo cleanup operations"))
@@ -1932,7 +2034,7 @@ impl DevCleaner {
                     .flex_col()
                     .items_center()
                     .gap_2()
-                    .child(div().text_xs().text_color(Theme::overlay0()).child("Built with"))
+                    .child(div().text_xs().text_color(Theme::overlay0(self.theme_mode)).child("Built with"))
                     .child(
                         div()
                             .flex()
@@ -1953,7 +2055,7 @@ impl DevCleaner {
             .child(
                 div()
                     .text_sm()
-                    .text_color(Theme::subtext1())
+                    .text_color(Theme::subtext1(self.theme_mode))
                     .child(text.to_string()),
             )
     }
@@ -1965,13 +2067,13 @@ impl DevCleaner {
             .gap_1()
             .px_3()
             .py_1()
-            .bg(Theme::surface0())
+            .bg(Theme::surface0(self.theme_mode))
             .rounded_md()
             .child(div().text_sm().child(icon.to_string()))
             .child(
                 div()
                     .text_sm()
-                    .text_color(Theme::text())
+                    .text_color(Theme::text(self.theme_mode))
                     .child(name.to_string()),
             )
     }

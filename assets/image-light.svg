@@ -1,0 +1,55 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="128" y="132" width="768" height="768" rx="174" fill="black" fill-opacity="0.05"/>
+    
+    <rect x="128" y="128" width="768" height="768" rx="174" fill="url(#light_silver_bg)" stroke="url(#light_border)" stroke-width="2"/>
+    
+    <circle cx="512" cy="512" r="300" stroke="url(#soft_blue_accent)" stroke-width="16" stroke-dasharray="1 25" stroke-linecap="round"/>
+    
+    <g transform="translate(512, 512) rotate(-45) translate(-512, -512)">
+        <path d="M380 550H644L670 850C670 861 661 870 650 870H374C363 870 354 861 354 850L380 550Z" fill="black" fill-opacity="0.12" transform="translate(10, 10)"/>
+        
+        <rect x="492" y="200" width="40" height="380" rx="20" fill="url(#polished_handle)" stroke="#F2F2F7" stroke-width="2"/>
+        
+        <path d="M380 550H644L670 850C670 861 661 870 650 870H374C363 870 354 861 354 850L380 550Z" fill="url(#frosted_tint)" stroke="url(#frosted_stroke)" stroke-width="3"/>
+        
+        <line x1="435" y1="580" x2="435" y2="840" stroke="#007AFF" stroke-opacity="0.7" stroke-width="6" stroke-linecap="round"/>
+        <line x1="512" y1="580" x2="512" y2="840" stroke="#007AFF" stroke-opacity="0.7" stroke-width="6" stroke-linecap="round"/>
+        <line x1="589" y1="580" x2="589" y2="840" stroke="#007AFF" stroke-opacity="0.7" stroke-width="6" stroke-linecap="round"/>
+    </g>
+
+    <path d="M128 350C128 200 200 128 350 128H724C800 128 896 220 896 350L128 550V350Z" fill="white" fill-opacity="0.4"/>
+
+    <defs>
+        <linearGradient id="light_silver_bg" x1="512" y1="128" x2="512" y2="896" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FCFCFC"/>
+            <stop offset="1" stop-color="#EBEBF0"/>
+        </linearGradient>
+        
+        <linearGradient id="light_border" x1="128" y1="128" x2="896" y2="896" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FFFFFF"/>
+            <stop offset="1" stop-color="#D1D1D6"/>
+        </linearGradient>
+        
+        <linearGradient id="soft_blue_accent" x1="512" y1="212" x2="512" y2="812" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#007AFF"/>
+            <stop offset="1" stop-color="#5AC8FA"/>
+        </linearGradient>
+        
+        <linearGradient id="polished_handle" x1="512" y1="200" x2="512" y2="580" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#F2F2F7"/>
+            <stop offset="0.3" stop-color="#D1D1D6"/>
+            <stop offset="0.7" stop-color="#AEAEB2"/>
+            <stop offset="1" stop-color="#8E8E93"/>
+        </linearGradient>
+        
+        <linearGradient id="frosted_tint" x1="512" y1="550" x2="512" y2="870" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FFFFFF" stop-opacity="0.6"/>
+            <stop offset="1" stop-color="#E0F2FF" stop-opacity="0.4"/>
+        </linearGradient>
+
+        <linearGradient id="frosted_stroke" x1="512" y1="550" x2="512" y2="870" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#007AFF" stop-opacity="0.6"/>
+            <stop offset="1" stop-color="#5AC8FA" stop-opacity="0.4"/>
+        </linearGradient>
+    </defs>
+</svg>
