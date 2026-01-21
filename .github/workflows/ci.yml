@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, development]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, development]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,8 +12,8 @@ env:
 jobs:
   test:
     name: Test Suite
-    runs-on: macos-latest  # macOS required for this project
-    
+    runs-on: macos-latest # macOS required for this project
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
   clippy:
     name: Clippy
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

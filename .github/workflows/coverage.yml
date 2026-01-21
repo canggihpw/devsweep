@@ -2,15 +2,15 @@ name: Code Coverage
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, development]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, development]
 
 jobs:
   coverage:
     name: Generate Coverage Report
-    runs-on: macos-latest  # macOS required for this project
-    
+    runs-on: macos-latest # macOS required for this project
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
