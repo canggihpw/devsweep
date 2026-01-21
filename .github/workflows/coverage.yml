@@ -8,7 +8,7 @@ on:
 
 jobs:
   coverage:
-    name: Generate Coverage Report
+    name: Tests & Coverage
     runs-on: macos-latest # macOS required for this project
 
     steps:
@@ -23,8 +23,16 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Generate coverage report
-        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - name: Run tests and generate coverage
+        run: |
+          echo "Running tests with coverage instrumentation..."
+          cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+          echo "✅ All tests passed!"
+
+      - name: Generate coverage summary
+        run: |
+          echo "📊 Coverage Summary:"
+          cargo llvm-cov --all-features --workspace --summary-only
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v4
