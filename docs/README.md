@@ -15,6 +15,7 @@ Welcome to the DevSweep documentation! This directory contains comprehensive gui
 
 - **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute to the project
 - **[Code of Conduct](../CODE_OF_CONDUCT.md)** - Community guidelines
+- **[Git Workflow Guide](GIT_WORKFLOW.md)** - Branching strategy and workflow
 - **[Versioning Guide](VERSIONING.md)** - Semantic versioning and release process
 - **[Changelog](../CHANGELOG.md)** - Version history and changes
 
@@ -29,6 +30,12 @@ Welcome to the DevSweep documentation! This directory contains comprehensive gui
 - **[Architecture Overview](../README.md#architecture)** - System design and components
 - **[How It Works](../README.md#how-it-works)** - Internal mechanisms
 - **[Adding New Checkers](../CONTRIBUTING.md#adding-new-checkers)** - Guide for adding support for new tools
+
+### Test Coverage
+
+- **[Coverage Improvement Plan](coverage/README.md)** - Plan to increase test coverage from 30% to 60-70%
+- **[Detailed Plan](coverage/IMPROVEMENT_PLAN.md)** - Phase-by-phase implementation guide
+- **[Quick Checklist](coverage/QUICK_CHECKLIST.md)** - Daily goals and task checklists
 
 ## Project Structure
 
@@ -45,9 +52,11 @@ devsweep/
 ├── docs/                  # Documentation (you are here)
 │   ├── README.md          # This file
 │   ├── PROJECT_SUMMARY.md # Project overview
+│   ├── GIT_WORKFLOW.md    # Git workflow and branching strategy
 │   ├── VERSIONING.md      # Versioning guide
 │   ├── MAINTAINER_GUIDE.md # Maintainer guide
-│   └── TESTING.md         # Testing strategy
+│   ├── TESTING.md         # Testing strategy
+│   └── coverage/          # Test coverage improvement docs
 ├── .github/               # GitHub-specific files
 │   ├── workflows/         # CI/CD workflows
 │   └── ISSUE_TEMPLATE/    # Issue templates
