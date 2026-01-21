@@ -2,21 +2,23 @@
 
 ## Branch Structure
 
-We follow a simplified Git Flow strategy with these permanent branches:
+We follow **GitHub Flow** - a simple, streamlined workflow:
 
-- **`main`** - Production-ready code, stable releases only
-- **`development`** - Integration branch, latest development work
+- **`main`** - The single default branch, always deployable
+  - All work branches off from `main`
+  - All finished work merges back to `main`
+  - CI/CD runs on `main` and PRs to `main`
 
 ## Branching Guidelines
 
 ### ✅ DO: Use Feature Branches
 
-**Always create a feature branch for any changes**. Never commit directly to `main` or `development`.
+**Always create a feature branch for any changes**. Never commit directly to `main`.
 
 ```bash
-# Start from development
-git checkout development
-git pull origin development
+# Start from main
+git checkout main
+git pull origin main
 
 # Create feature branch
 git checkout -b feature/your-feature-name
@@ -53,13 +55,13 @@ Use these prefixes:
   - Example: `chore/update-dependencies`
   - Example: `chore/setup-ci`
 
-### ❌ DON'T: Push Directly to Protected Branches
+### ❌ DON'T: Push Directly to Main
 
 ```bash
 # ❌ WRONG - Don't do this
-git checkout development
+git checkout main
 git commit -m "some changes"
-git push origin development
+git push origin main
 
 # ✅ CORRECT - Use feature branch
 git checkout -b feature/my-changes
@@ -72,9 +74,9 @@ git push origin feature/my-changes
 ### 1. Start New Work
 
 ```bash
-# Update your local development branch
-git checkout development
-git pull origin development
+# Update your local main branch
+git checkout main
+git pull origin main
 
 # Create feature branch
 git checkout -b feature/add-new-checker
@@ -158,20 +160,20 @@ git push
 **On GitHub:**
 1. Go to repository
 2. Click "Pull requests" → "New pull request"
-3. Base: `development` ← Compare: `feature/add-new-checker`
+3. Base: `main` ← Compare: `feature/add-new-checker`
 4. Fill in PR description
 5. Click "Create pull request"
 6. Wait for CI checks to pass
-7. Request review if needed
+7. Merge when ready (squash and merge recommended)
 
 ### 7. After PR is Merged
 
 ```bash
-# Switch back to development
-git checkout development
+# Switch back to main
+git checkout main
 
 # Pull the merged changes
-git pull origin development
+git pull origin main
 
 # Delete local feature branch
 git branch -d feature/add-new-checker
@@ -236,8 +238,8 @@ git push -u origin feature/my-feature
 ## Why Use Feature Branches?
 
 ### 1. **CI Efficiency** ✅
-- CI workflows only run on `main` and `development`
-- Feature branches don't trigger expensive CI runs
+- CI workflows only run on `main` and PRs to `main`
+- Feature branches (direct pushes) don't trigger CI runs
 - Saves GitHub Actions minutes
 - Faster iteration
 
@@ -248,7 +250,7 @@ git push -u origin feature/my-feature
 - Team collaboration
 
 ### 3. **Clean History** ✅
-- Development branch stays stable
+- Main branch stays stable and deployable
 - Easy to revert problematic changes
 - Clear feature separation
 - Better git log
@@ -341,20 +343,20 @@ Add screenshots for UI changes
 ### Scenario 1: Long-Running Feature
 
 ```bash
-# Periodically sync with development
+# Periodically sync with main
 git checkout feature/my-feature
 git fetch origin
-git merge origin/development
+git merge origin/main
 
 # Or use rebase for cleaner history
-git rebase origin/development
+git rebase origin/main
 ```
 
-### Scenario 2: Need to Fix Development Branch Urgently
+### Scenario 2: Need to Fix Critical Bug
 
 ```bash
-# Create hotfix branch from development
-git checkout development
+# Create hotfix branch from main
+git checkout main
 git pull
 git checkout -b fix/urgent-bug
 
@@ -364,7 +366,7 @@ git commit -m "fix: critical bug in scanner"
 # Push and create PR immediately
 git push origin fix/urgent-bug
 
-# Create PR with "urgent" label
+# Create PR and merge ASAP (can skip review if critical)
 ```
 
 ### Scenario 3: Experiment/POC
@@ -396,9 +398,8 @@ git rebase -i HEAD~4  # Squash last 4 commits
 ## CI/CD Integration
 
 ### Workflows Run On:
-- `main` branch
-- `development` branch
-- Pull requests to `main` or `development`
+- `main` branch (after merge)
+- Pull requests to `main`
 
 ### Workflows DON'T Run On:
 - Feature branches (direct pushes)
@@ -409,15 +410,20 @@ git rebase -i HEAD~4  # Squash last 4 commits
 ```yaml
 on:
   push:
-    branches: [main, development]  # Only these
+    branches: [main]  # Only main
   pull_request:
-    branches: [main, development]  # And PRs to these
+    branches: [main]  # And PRs to main
 ```
 
 This means:
-- ✅ Push to `feature/xyz` → No CI (fast)
-- ✅ Open PR to `development` → CI runs (checks your code)
-- ✅ Merge PR → CI runs (validates integration)
+- ✅ Push to `feature/xyz` → No CI (fast, iterate freely)
+- ✅ Open PR to `main` → CI runs (checks your code)
+- ✅ Merge PR → CI runs on main (validates integration)
+
+### Badge Configuration:
+- Build badge points to `main` branch
+- Coverage badge points to `main` branch
+- All status badges reflect `main` state
 
 ## Quick Reference
 
@@ -425,7 +431,7 @@ This means:
 
 ```bash
 # 1. Start work
-git checkout development && git pull
+git checkout main && git pull
 git checkout -b feature/my-feature
 
 # 2. Work and commit LOCALLY (repeat as needed)
@@ -446,10 +452,10 @@ cargo clippy
 # 4. Push when ready (DELIBERATE action)
 git push -u origin feature/my-feature
 
-# 5. Create PR on GitHub (manual)
+# 5. Create PR on GitHub (manual) to main
 
 # 6. After merge, cleanup
-git checkout development && git pull
+git checkout main && git pull
 git branch -d feature/my-feature
 ```
 
@@ -487,44 +493,51 @@ git push -u origin feature/my-feature
 ## Branch Protection Rules (Recommended)
 
 **For `main` branch:**
-- Require pull request reviews (1-2 reviewers)
-- Require status checks to pass
-- Require branches to be up to date
-- No direct pushes
-
-**For `development` branch:**
-- Require status checks to pass
-- Require branches to be up to date
-- Allow maintainers to bypass (for urgent fixes)
+- Require pull request reviews (optional: 1 reviewer for team projects)
+- Require status checks to pass (CI, tests, coverage)
+- Require branches to be up to date before merge
+- No direct pushes (enforce via GitHub settings)
+- Automatically delete head branches after merge
+- Use "Squash and merge" as default merge strategy
 
 ## Summary
 
 | ✅ DO | ❌ DON'T |
 |-------|----------|
-| Use feature branches | Push directly to `main` or `development` |
+| Use feature branches | Push directly to `main` |
 | Commit locally first | Push immediately after every commit |
 | Accumulate related commits | Push "WIP" or broken commits |
 | Test before pushing | Push untested code |
 | Push when ready to share | Push work-in-progress constantly |
-| Create PRs for review | Merge without CI passing |
+| Create PRs to `main` | Merge without CI passing |
 | Follow naming conventions | Use vague branch names |
 | Write clear commit messages | Commit "WIP" or "fixes" |
 | Keep branches focused | Mix multiple features in one branch |
 | Delete merged branches | Leave stale branches around |
-| Sync with development regularly | Let branches diverge too much |
+| Sync with main regularly | Let branches diverge too much |
 
 ---
 
 ## Key Takeaways
 
-1. **Commit frequently** - Save your work locally often
-2. **Push deliberately** - Only push when ready to share
-3. **Test before pushing** - Verify quality locally first
-4. **Use feature branches** - Never push directly to main/development
-5. **Wait for confirmation** - Don't automate the push step
+1. **One branch to rule them all** - `main` is the only permanent branch
+2. **Commit frequently** - Save your work locally often
+3. **Push deliberately** - Only push when ready to share
+4. **Test before pushing** - Verify quality locally first
+5. **Use feature branches** - Never push directly to `main`
+6. **Wait for confirmation** - Don't automate the push step
+7. **Merge back quickly** - Keep features small and merge often
+
+**GitHub Flow Benefits**:
+- ✅ Simpler than Git Flow (no development branch complexity)
+- ✅ Easier badge management (all point to `main`)
+- ✅ Fewer merge conflicts (shorter-lived branches)
+- ✅ Always deployable `main` branch
+- ✅ Perfect for continuous deployment
 
 **Remember**: 
-- **Commit** = Save your work (local, frequent, safe)
-- **Push** = Share your work (remote, deliberate, reviewed)
+- **Commit** = Save your work (local, frequent)
+- **Push** = Share your work (remote, deliberate)
+- **Main** = Always stable, always deployable
 
-Feature branches + local commits keep your workflow clean, CI efficient, and enable better collaboration! 🚀
+Feature branches + local commits + GitHub Flow = clean workflow, efficient CI, better collaboration! 🚀
