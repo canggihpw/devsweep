@@ -61,7 +61,14 @@ mod tests {
 
     #[test]
     fn test_format_size() {
-        assert!(format_size(1024).contains("Ki") || format_size(1024).contains("KB"));
+        let result = format_size(1024);
+        // ByteSize returns "1.0 kiB" with lowercase 'kiB'
+        assert!(result.contains("kiB") || result.contains("KB") || result.contains("KiB"));
+
+        // Test various sizes
+        assert!(!format_size(0).is_empty());
+        assert!(!format_size(512).is_empty());
+        assert!(!format_size(1024 * 1024).is_empty()); // 1 MiB
     }
 
     #[test]

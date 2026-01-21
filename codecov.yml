@@ -1,0 +1,63 @@
+# Codecov configuration for DevSweep
+
+coverage:
+  status:
+    project:
+      default:
+        target: 70%           # Overall project coverage target
+        threshold: 2%         # Allow 2% drop before failing
+        
+    patch:
+      default:
+        target: 60%           # New code coverage target
+        threshold: 5%
+
+  precision: 2
+  round: down
+  range: 50..90              # Coverage range (red to green)
+
+ignore:
+  - "src/main.rs"            # Ignore main entry point
+  - "src/ui/**"              # Ignore UI components (hard to test)
+  - "src/app.rs"             # Ignore GPUI app setup
+  - "src/assets.rs"          # Ignore asset loading
+  - "tests/**"               # Don't include tests in coverage
+
+comment:
+  layout: "header, diff, flags, components"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+flags:
+  unittests:
+    paths:
+      - src/
+    carryforward: true
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: 70%
+  
+  individual_components:
+    - component_id: backend
+      name: Backend Module
+      paths:
+        - src/backend.rs
+      
+    - component_id: checkers
+      name: Checker Modules
+      paths:
+        - src/checkers/**
+        
+    - component_id: core
+      name: Core Utilities
+      paths:
+        - src/types.rs
+        - src/utils.rs
+        - src/cache_settings.rs
+        - src/cleanup_history.rs
+        - src/scan_cache.rs

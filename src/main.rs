@@ -1,16 +1,5 @@
-mod app;
-mod assets;
-mod backend;
-mod cache_settings;
-mod checkers;
-mod cleanup_history;
-mod scan_cache;
-mod types;
-mod ui;
-mod utils;
-
-use app::DevSweep;
-use assets::Assets;
+use devsweep::app::DevSweep;
+use devsweep::assets::Assets;
 use gpui::*;
 use std::fs;
 use std::io::{Read, Write};

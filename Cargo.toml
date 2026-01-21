@@ -25,6 +25,13 @@ chrono = "0.4"
 fs2 = "0.4.3"
 image = "0.25.9"
 
+[dev-dependencies]
+tempfile = "3.8"
+
+[lib]
+name = "devsweep"
+path = "src/lib.rs"
+
 [[bin]]
 name = "devsweep"
 path = "src/main.rs"

@@ -18,8 +18,14 @@ Welcome to the DevSweep documentation! This directory contains comprehensive gui
 - **[Versioning Guide](VERSIONING.md)** - Semantic versioning and release process
 - **[Changelog](../CHANGELOG.md)** - Version history and changes
 
+### For Maintainers
+
+- **[Maintainer Guide](MAINTAINER_GUIDE.md)** - Complete guide for project maintainers
+- **[Testing Guide](TESTING.md)** - Comprehensive testing strategy and plan
+
 ### Technical Documentation
 
+- **[Project Summary](PROJECT_SUMMARY.md)** - High-level project overview and architecture
 - **[Architecture Overview](../README.md#architecture)** - System design and components
 - **[How It Works](../README.md#how-it-works)** - Internal mechanisms
 - **[Adding New Checkers](../CONTRIBUTING.md#adding-new-checkers)** - Guide for adding support for new tools
@@ -38,7 +44,10 @@ devsweep/
 ├── assets/                # Icons and images
 ├── docs/                  # Documentation (you are here)
 │   ├── README.md          # This file
-│   └── VERSIONING.md      # Versioning guide
+│   ├── PROJECT_SUMMARY.md # Project overview
+│   ├── VERSIONING.md      # Versioning guide
+│   ├── MAINTAINER_GUIDE.md # Maintainer guide
+│   └── TESTING.md         # Testing strategy
 ├── .github/               # GitHub-specific files
 │   ├── workflows/         # CI/CD workflows
 │   └── ISSUE_TEMPLATE/    # Issue templates

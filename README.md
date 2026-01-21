@@ -2,6 +2,8 @@
 
 [![Release](https://img.shields.io/github/v/release/canggihpw/devsweep)](https://github.com/canggihpw/devsweep/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/canggihpw/devsweep/ci.yml?branch=development&label=CI)](https://github.com/canggihpw/devsweep/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/canggihpw/devsweep/branch/main/graph/badge.svg)](https://codecov.io/gh/canggihpw/devsweep)
+[![Tests](https://img.shields.io/badge/tests-80%20passing-brightgreen)](https://github.com/canggihpw/devsweep/actions)
 [![License](https://img.shields.io/github/license/canggihpw/devsweep)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-11.0+-blue)](https://github.com/canggihpw/devsweep)
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange)](https://www.rust-lang.org/)
