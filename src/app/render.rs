@@ -1,620 +1,13 @@
-mod backend;
-mod cache_settings;
-mod checkers;
-mod cleanup_history;
-mod scan_cache;
-mod types;
-mod ui;
-mod utils;
-
-use backend::{CategoryData, StorageBackend};
+use crate::app::state::{
+    CacheTTLSetting, CategoryItem, CleanupItemData, DevSweep, QuarantineItemData,
+    QuarantineRecordData,
+};
+use crate::ui::sidebar::Tab;
+use crate::ui::Theme;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use ui::sidebar::Tab;
-use ui::{Theme, ThemeMode};
 
-// UI Data structures
-#[derive(Clone)]
-struct CategoryItem {
-    name: SharedString,
-    size: SharedString,
-    #[allow(dead_code)]
-    total_size: u64,
-    item_count: i32,
-    checked: bool,
-    expanded: bool,
-}
-
-#[derive(Clone)]
-struct CleanupItemData {
-    item_type: SharedString,
-    path: SharedString,
-    size_str: SharedString,
-    #[allow(dead_code)]
-    size: u64,
-    safe_to_delete: bool,
-    #[allow(dead_code)]
-    warning: SharedString,
-    has_warning: bool,
-    selected: bool,
-    category_index: usize,
-}
-
-#[derive(Clone)]
-struct QuarantineRecordData {
-    id: SharedString,
-    timestamp: SharedString,
-    total_size: SharedString,
-    item_count: i32,
-    success_count: i32,
-    error_count: i32,
-    can_undo: bool,
-    expanded: bool,
-}
-
-#[derive(Clone)]
-struct QuarantineItemData {
-    item_type: SharedString,
-    original_path: SharedString,
-    size_str: SharedString,
-    success: bool,
-    error_message: SharedString,
-    #[allow(dead_code)]
-    can_restore: bool,
-    deleted_permanently: bool,
-    record_id: SharedString,
-    item_index: usize,
-    quarantine_path: Option<PathBuf>,
-}
-
-#[derive(Clone)]
-struct CacheTTLSetting {
-    category: SharedString,
-    ttl_minutes: i32,
-}
-
-// Main application view
-struct DevCleaner {
-    backend: Arc<Mutex<StorageBackend>>,
-    active_tab: Tab,
-    theme_mode: ThemeMode,
-    is_scanning: bool,
-    is_cleaning: bool,
-    status_text: SharedString,
-    storage_available: SharedString,
-    total_reclaimable: SharedString,
-    selected_items_count: i32,
-    selected_items_size: SharedString,
-    categories: Vec<CategoryItem>,
-    all_items: Vec<CleanupItemData>,
-    category_data: Vec<CategoryData>,
-    selected_items: Vec<types::CleanupItem>,
-    quarantine_records: Vec<QuarantineRecordData>,
-    quarantine_items: Vec<QuarantineItemData>,
-    quarantine_total_size: SharedString,
-    quarantine_total_items: i32,
-    cache_ttls: Vec<CacheTTLSetting>,
-}
-
-impl DevCleaner {
-    fn new() -> Self {
-        let backend = Arc::new(Mutex::new(StorageBackend::new()));
-
-        // Load initial cache TTLs
-        let ttls = backend.lock().unwrap().get_all_cache_ttls();
-        let mut cache_ttls: Vec<CacheTTLSetting> = ttls
-            .iter()
-            .map(|(cat, ttl_sec)| CacheTTLSetting {
-                category: cat.clone().into(),
-                ttl_minutes: (*ttl_sec / 60) as i32,
-            })
-            .collect();
-        cache_ttls.sort_by(|a, b| a.category.cmp(&b.category));
-
-        // Get initial storage info
-        let storage_available = if let Ok(stat) = fs2::statvfs("/") {
-            utils::format_size(stat.available_space()).into()
-        } else {
-            "Unknown".into()
-        };
-
-        Self {
-            backend,
-            active_tab: Tab::Scan,
-            theme_mode: ThemeMode::default(),
-            is_scanning: false,
-            is_cleaning: false,
-            status_text: "Click 'Scan' to analyze your storage".into(),
-            storage_available,
-            total_reclaimable: "0 B".into(),
-            selected_items_count: 0,
-            selected_items_size: "0 B".into(),
-            categories: Vec::new(),
-            all_items: Vec::new(),
-            category_data: Vec::new(),
-            selected_items: Vec::new(),
-            quarantine_records: Vec::new(),
-            quarantine_items: Vec::new(),
-            quarantine_total_size: "0 B".into(),
-            quarantine_total_items: 0,
-            cache_ttls,
-        }
-    }
-
-    fn update_storage_info(&mut self) {
-        if let Ok(stat) = fs2::statvfs("/") {
-            self.storage_available = utils::format_size(stat.available_space()).into();
-        }
-    }
-
-    fn refresh_quarantine(&mut self) {
-        let backend = self.backend.lock().unwrap();
-        let records = backend.get_quarantine_records();
-
-        self.quarantine_records = records
-            .iter()
-            .map(|r| {
-                use std::time::SystemTime;
-                let timestamp_str = r
-                    .timestamp
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .ok()
-                    .and_then(|d| {
-                        let secs = d.as_secs();
-                        let datetime = chrono::DateTime::<chrono::Local>::from(
-                            SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(secs),
-                        );
-                        Some(datetime.format("%Y-%m-%d %H:%M:%S").to_string())
-                    })
-                    .unwrap_or_else(|| "Unknown".to_string());
-
-                QuarantineRecordData {
-                    id: r.id.clone().into(),
-                    timestamp: timestamp_str.into(),
-                    total_size: utils::format_size(r.total_size).into(),
-                    item_count: r.items.len() as i32,
-                    success_count: r.success_count as i32,
-                    error_count: r.error_count as i32,
-                    can_undo: r.can_undo,
-                    expanded: false,
-                }
-            })
-            .collect();
-
-        // Collect all items
-        self.quarantine_items = records
-            .iter()
-            .flat_map(|record| {
-                record.items.iter().enumerate().map(|(idx, item)| {
-                    let error_msg = item.error_message.clone().unwrap_or_default();
-                    QuarantineItemData {
-                        item_type: item.item_type.clone().into(),
-                        original_path: item.original_path.display().to_string().into(),
-                        size_str: utils::format_size(item.size).into(),
-                        success: item.success,
-                        error_message: error_msg.into(),
-                        can_restore: item.can_restore(),
-                        deleted_permanently: item.deleted_permanently,
-                        record_id: record.id.clone().into(),
-                        item_index: idx,
-                        quarantine_path: item.quarantine_path.clone(),
-                    }
-                })
-            })
-            .collect();
-
-        let stats = backend.get_quarantine_stats();
-        self.quarantine_total_size = utils::format_size(stats.quarantine_size).into();
-        self.quarantine_total_items = stats.total_items_cleaned as i32;
-    }
-
-    fn refresh_cache_ttls(&mut self) {
-        let backend = self.backend.lock().unwrap();
-        let ttls = backend.get_all_cache_ttls();
-        self.cache_ttls = ttls
-            .iter()
-            .map(|(cat, ttl_sec)| CacheTTLSetting {
-                category: cat.clone().into(),
-                ttl_minutes: (*ttl_sec / 60) as i32,
-            })
-            .collect();
-        self.cache_ttls.sort_by(|a, b| a.category.cmp(&b.category));
-    }
-
-    fn set_tab(&mut self, tab: Tab) {
-        self.active_tab = tab;
-        if tab == Tab::Quarantine {
-            self.refresh_quarantine();
-        } else if tab == Tab::Settings {
-            self.refresh_cache_ttls();
-        }
-    }
-
-    fn start_scan(&mut self, use_cache: bool, cx: &mut ViewContext<Self>) {
-        // Prevent multiple concurrent scans
-        if self.is_scanning || self.is_cleaning {
-            return;
-        }
-
-        self.is_scanning = true;
-        self.status_text = if use_cache {
-            "Scanning (using cache)...".into()
-        } else {
-            "Full scan in progress...".into()
-        };
-        self.selected_items.clear();
-        self.selected_items_count = 0;
-        self.selected_items_size = "0 B".into();
-
-        // Notify immediately to update UI and show disabled state
-        cx.notify();
-
-        let backend = self.backend.clone();
-
-        cx.spawn(|this, mut cx| async move {
-            // Run scan in background
-            let result: (Vec<CategoryData>, u64) = {
-                let mut backend = backend.lock().unwrap();
-                let cats = backend.scan_with_cache(use_cache);
-                let total = backend.get_total_reclaimable();
-                (cats, total)
-            };
-
-            let categories = result.0;
-            let total = result.1;
-
-            // Update UI on main thread
-            let _ = cx.update(|cx| {
-                let _ = this.update(cx, |this, cx| {
-                    this.category_data = categories.clone();
-
-                    // Convert to UI models
-                    this.categories = categories
-                        .iter()
-                        .map(|c| CategoryItem {
-                            name: c.name.clone().into(),
-                            size: c.size.clone().into(),
-                            total_size: c.total_size,
-                            item_count: c.item_count,
-                            checked: false,
-                            expanded: false,
-                        })
-                        .collect();
-
-                    this.all_items.clear();
-                    for (cat_idx, cat) in categories.iter().enumerate() {
-                        for item in &cat.items {
-                            let path_str = item
-                                .path
-                                .as_ref()
-                                .map(|p| p.display().to_string())
-                                .unwrap_or_default();
-                            let warning = item.warning.clone().unwrap_or_default();
-
-                            this.all_items.push(CleanupItemData {
-                                item_type: item.item_type.clone().into(),
-                                path: path_str.into(),
-                                size_str: item.size_str.clone().into(),
-                                size: item.size,
-                                safe_to_delete: item.safe_to_delete,
-                                warning: warning.into(),
-                                has_warning: item.warning.is_some(),
-                                selected: false,
-                                category_index: cat_idx,
-                            });
-                        }
-                    }
-
-                    this.total_reclaimable = utils::format_size(total).into();
-                    this.is_scanning = false;
-
-                    if total > 0 {
-                        this.status_text =
-                            format!("Found {} that can be cleaned", utils::format_size(total))
-                                .into();
-                    } else {
-                        this.status_text = "No cleanable files found".into();
-                    }
-
-                    this.update_storage_info();
-                    cx.notify();
-                });
-            });
-        })
-        .detach();
-    }
-
-    fn toggle_category(&mut self, index: usize, _cx: &mut ViewContext<Self>) {
-        if index >= self.categories.len() {
-            return;
-        }
-
-        let checked = !self.categories[index].checked;
-        self.categories[index].checked = checked;
-
-        // Update all items in this category
-        if let Some(cat_data) = self.category_data.get(index) {
-            if checked {
-                // Add all items from this category to selected
-                for item in &cat_data.items {
-                    if !self
-                        .selected_items
-                        .iter()
-                        .any(|si| si.item_type == item.item_type && si.path == item.path)
-                    {
-                        self.selected_items.push(item.clone());
-                    }
-                }
-            } else {
-                // Remove all items from this category
-                self.selected_items.retain(|si| {
-                    !cat_data
-                        .items
-                        .iter()
-                        .any(|ci| ci.item_type == si.item_type && ci.path == si.path)
-                });
-            }
-
-            // Update item checkboxes
-            for item in &mut self.all_items {
-                if item.category_index == index {
-                    item.selected = checked;
-                }
-            }
-        }
-
-        self.update_selection_counts();
-    }
-
-    fn toggle_category_expand(&mut self, index: usize, _cx: &mut ViewContext<Self>) {
-        if index < self.categories.len() {
-            self.categories[index].expanded = !self.categories[index].expanded;
-        }
-    }
-
-    fn toggle_item(&mut self, index: usize, _cx: &mut ViewContext<Self>) {
-        if index >= self.all_items.len() {
-            return;
-        }
-
-        let item_data = &mut self.all_items[index];
-        item_data.selected = !item_data.selected;
-        let selected = item_data.selected;
-        let cat_idx = item_data.category_index;
-        let item_type = item_data.item_type.to_string();
-        let item_path = item_data.path.to_string();
-
-        // Find the backend item
-        if let Some(cat) = self.category_data.get(cat_idx) {
-            if let Some(backend_item) = cat.items.iter().find(|bi| {
-                bi.item_type == item_type
-                    && bi.path.as_ref().map(|p| p.display().to_string()).as_deref()
-                        == Some(&item_path)
-            }) {
-                if selected {
-                    if !self.selected_items.iter().any(|si| {
-                        si.item_type == backend_item.item_type && si.path == backend_item.path
-                    }) {
-                        self.selected_items.push(backend_item.clone());
-                    }
-                } else {
-                    self.selected_items.retain(|si| {
-                        !(si.item_type == backend_item.item_type && si.path == backend_item.path)
-                    });
-                }
-            }
-
-            // Update category checkbox
-            let all_selected = cat.items.iter().all(|ci| {
-                self.selected_items
-                    .iter()
-                    .any(|si| si.item_type == ci.item_type && si.path == ci.path)
-            });
-            self.categories[cat_idx].checked = all_selected && !cat.items.is_empty();
-        }
-
-        self.update_selection_counts();
-    }
-
-    fn select_all(&mut self, _cx: &mut ViewContext<Self>) {
-        for cat in &mut self.categories {
-            cat.checked = true;
-        }
-        for item in &mut self.all_items {
-            item.selected = true;
-        }
-        self.selected_items.clear();
-        for cat in &self.category_data {
-            self.selected_items.extend(cat.items.clone());
-        }
-        self.update_selection_counts();
-    }
-
-    fn deselect_all(&mut self, _cx: &mut ViewContext<Self>) {
-        for cat in &mut self.categories {
-            cat.checked = false;
-        }
-        for item in &mut self.all_items {
-            item.selected = false;
-        }
-        self.selected_items.clear();
-        self.update_selection_counts();
-    }
-
-    fn update_selection_counts(&mut self) {
-        let total_size: u64 = self.selected_items.iter().map(|si| si.size).sum();
-        self.selected_items_count = self.selected_items.len() as i32;
-        self.selected_items_size = utils::format_size(total_size).into();
-    }
-
-    fn execute_cleanup(&mut self, cx: &mut ViewContext<Self>) {
-        if self.selected_items.is_empty() {
-            self.status_text = "No items selected for cleanup".into();
-            cx.notify();
-            return;
-        }
-
-        self.is_cleaning = true;
-        self.status_text = format!("Deleting {} items...", self.selected_items.len()).into();
-        cx.notify();
-
-        let backend = self.backend.clone();
-        let items_to_clean = self.selected_items.clone();
-
-        cx.spawn(|this, mut cx| async move {
-            let result = {
-                let mut backend = backend.lock().unwrap();
-                backend.execute_cleanup_with_history(&items_to_clean, true)
-            };
-
-            let _ = cx.update(|cx| {
-                let _ = this.update(cx, |this, cx| {
-                    this.is_cleaning = false;
-
-                    match result {
-                        Ok(msg) => {
-                            this.status_text = format!("✓ {}", msg).into();
-                        }
-                        Err(e) => {
-                            this.status_text = format!("⚠ {}", e).into();
-                        }
-                    }
-
-                    // Trigger rescan
-                    this.start_scan(true, cx);
-                });
-            });
-        })
-        .detach();
-    }
-
-    fn toggle_quarantine_record_expand(&mut self, index: usize, _cx: &mut ViewContext<Self>) {
-        if index < self.quarantine_records.len() {
-            self.quarantine_records[index].expanded = !self.quarantine_records[index].expanded;
-        }
-    }
-
-    fn undo_record(&mut self, record_id: String, cx: &mut ViewContext<Self>) {
-        self.is_cleaning = true;
-        self.status_text = "Undoing cleanup...".into();
-        cx.notify();
-
-        let backend = self.backend.clone();
-
-        cx.spawn(|this, mut cx| async move {
-            let result = {
-                let mut backend = backend.lock().unwrap();
-                backend.undo_cleanup(&record_id)
-            };
-
-            let _ = cx.update(|cx| {
-                let _ = this.update(cx, |this, cx| {
-                    this.is_cleaning = false;
-
-                    match result {
-                        Ok(msg) => {
-                            this.status_text = format!("✓ {}", msg).into();
-                        }
-                        Err(e) => {
-                            this.status_text = format!("✗ {}", e).into();
-                        }
-                    }
-
-                    this.refresh_quarantine();
-                    this.update_storage_info();
-                    cx.notify();
-                });
-            });
-        })
-        .detach();
-    }
-
-    fn delete_quarantine_item(
-        &mut self,
-        record_id: String,
-        item_index: usize,
-        cx: &mut ViewContext<Self>,
-    ) {
-        self.is_cleaning = true;
-        self.status_text = "Deleting item...".into();
-        cx.notify();
-
-        let backend = self.backend.clone();
-
-        cx.spawn(|this, mut cx| async move {
-            let result = {
-                let mut backend = backend.lock().unwrap();
-                backend.delete_quarantine_item(&record_id, item_index)
-            };
-
-            let _ = cx.update(|cx| {
-                let _ = this.update(cx, |this, cx| {
-                    this.is_cleaning = false;
-
-                    match result {
-                        Ok(msg) => {
-                            this.status_text = format!("✓ {}", msg).into();
-                        }
-                        Err(e) => {
-                            this.status_text = format!("✗ {}", e).into();
-                        }
-                    }
-
-                    this.refresh_quarantine();
-                    this.update_storage_info();
-                    cx.notify();
-                });
-            });
-        })
-        .detach();
-    }
-
-    fn clear_all_quarantine(&mut self, cx: &mut ViewContext<Self>) {
-        self.is_cleaning = true;
-        self.status_text = "Clearing quarantine...".into();
-        cx.notify();
-
-        let backend = self.backend.clone();
-
-        cx.spawn(|this, mut cx| async move {
-            let result = {
-                let mut backend = backend.lock().unwrap();
-                backend.clear_all_quarantine()
-            };
-
-            let _ = cx.update(|cx| {
-                let _ = this.update(cx, |this, cx| {
-                    this.is_cleaning = false;
-
-                    match result {
-                        Ok(msg) => {
-                            this.status_text = format!("✓ {}", msg).into();
-                        }
-                        Err(e) => {
-                            this.status_text = format!("✗ {}", e).into();
-                        }
-                    }
-
-                    this.refresh_quarantine();
-                    this.update_storage_info();
-                    cx.notify();
-                });
-            });
-        })
-        .detach();
-    }
-
-    fn reset_cache_defaults(&mut self, _cx: &mut ViewContext<Self>) {
-        let mut backend = self.backend.lock().unwrap();
-        backend.reset_cache_config();
-        drop(backend);
-        self.refresh_cache_ttls();
-    }
-}
-
-impl Render for DevCleaner {
+impl Render for DevSweep {
     fn render(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let active_tab = self.active_tab;
 
@@ -641,8 +34,8 @@ impl Render for DevCleaner {
     }
 }
 
-impl DevCleaner {
-    fn render_sidebar(&mut self, cx: &mut ViewContext<Self>) -> Div {
+impl DevSweep {
+    pub fn render_sidebar(&mut self, cx: &mut ViewContext<Self>) -> Div {
         let active_tab = self.active_tab;
         let storage_available = self.storage_available.clone();
 
@@ -762,7 +155,7 @@ impl DevCleaner {
             )
     }
 
-    fn sidebar_item(
+    pub fn sidebar_item(
         &self,
         tab: Tab,
         is_active: bool,
@@ -813,7 +206,7 @@ impl DevCleaner {
             )
     }
 
-    fn render_scan_tab(&mut self, cx: &mut ViewContext<Self>) -> Div {
+    pub fn render_scan_tab(&mut self, cx: &mut ViewContext<Self>) -> Div {
         let is_scanning = self.is_scanning;
         let is_cleaning = self.is_cleaning;
         let status_text = self.status_text.clone();
@@ -1117,7 +510,7 @@ impl DevCleaner {
             )
     }
 
-    fn empty_state(&self, message: &str) -> Div {
+    pub fn empty_state(&self, message: &str) -> Div {
         div()
             .w_full()
             .py_8()
@@ -1135,7 +528,7 @@ impl DevCleaner {
             )
     }
 
-    fn render_category_section(
+    pub fn render_category_section(
         &self,
         category: CategoryItem,
         items: Vec<CleanupItemData>,
@@ -1263,7 +656,7 @@ impl DevCleaner {
             })
     }
 
-    fn render_cleanup_item(
+    pub fn render_cleanup_item(
         &self,
         item: CleanupItemData,
         global_idx: usize,
@@ -1384,7 +777,7 @@ impl DevCleaner {
             )
     }
 
-    fn render_quarantine_tab(&mut self, cx: &mut ViewContext<Self>) -> Div {
+    pub fn render_quarantine_tab(&mut self, cx: &mut ViewContext<Self>) -> Div {
         let is_cleaning = self.is_cleaning;
         let status_text = self.status_text.clone();
         let total_size = self.quarantine_total_size.clone();
@@ -1414,8 +807,19 @@ impl DevCleaner {
                             .flex()
                             .items_center()
                             .gap_4()
-                            .child(div().text_xl().font_weight(FontWeight::BOLD).text_color(Theme::text(self.theme_mode)).child("Quarantine"))
-                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child(status_text))
+                            .child(
+                                div()
+                                    .text_xl()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(Theme::text(self.theme_mode))
+                                    .child("Quarantine"),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(Theme::subtext0(self.theme_mode))
+                                    .child(status_text),
+                            ),
                     )
                     .child(
                         div()
@@ -1431,12 +835,19 @@ impl DevCleaner {
                                     .rounded_md()
                                     .cursor_pointer()
                                     .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-                                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+                                    .active(|style| {
+                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                    })
                                     .on_click(cx.listener(|this, _event, cx| {
                                         this.refresh_quarantine();
                                         cx.notify();
                                     }))
-                                    .child(div().text_sm().text_color(Theme::text(self.theme_mode)).child("Refresh"))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(Theme::text(self.theme_mode))
+                                            .child("Refresh"),
+                                    ),
                             )
                             .child(
                                 div()
@@ -1447,15 +858,26 @@ impl DevCleaner {
                                     .rounded_md()
                                     .cursor_pointer()
                                     .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-                                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+                                    .active(|style| {
+                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                    })
                                     .on_click(cx.listener(|_this, _event, _cx| {
                                         if let Some(cache_dir) = dirs::cache_dir() {
-                                            let quarantine_path = cache_dir.join("development-cleaner").join("quarantine");
+                                            let quarantine_path = cache_dir
+                                                .join("development-cleaner")
+                                                .join("quarantine");
                                             let _ = std::fs::create_dir_all(&quarantine_path);
-                                            let _ = std::process::Command::new("open").arg(quarantine_path).spawn();
+                                            let _ = std::process::Command::new("open")
+                                                .arg(quarantine_path)
+                                                .spawn();
                                         }
                                     }))
-                                    .child(div().text_sm().text_color(Theme::text(self.theme_mode)).child("Open in Finder"))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(Theme::text(self.theme_mode))
+                                            .child("Open in Finder"),
+                                    ),
                             )
                             .when(!records_empty && !is_cleaning, |d| {
                                 d.child(
@@ -1467,11 +889,21 @@ impl DevCleaner {
                                         .rounded_md()
                                         .cursor_pointer()
                                         .hover(|style| style.bg(Theme::red_hover(self.theme_mode)))
-                                        .active(|style| style.bg(Theme::red_active(self.theme_mode)).opacity(0.9))
+                                        .active(|style| {
+                                            style
+                                                .bg(Theme::red_active(self.theme_mode))
+                                                .opacity(0.9)
+                                        })
                                         .on_click(cx.listener(|this, _event, cx| {
                                             this.clear_all_quarantine(cx);
                                         }))
-                                        .child(div().text_sm().text_color(Theme::crust(self.theme_mode)).font_weight(FontWeight::SEMIBOLD).child("Delete All"))
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .text_color(Theme::crust(self.theme_mode))
+                                                .font_weight(FontWeight::SEMIBOLD)
+                                                .child("Delete All"),
+                                        ),
                                 )
                             })
                             .when(records_empty || is_cleaning, |d| {
@@ -1481,10 +913,15 @@ impl DevCleaner {
                                         .py_2()
                                         .bg(Theme::surface1(self.theme_mode))
                                         .rounded_md()
-                                        .child(div().text_sm().text_color(Theme::overlay0(self.theme_mode)).child("Delete All"))
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .text_color(Theme::overlay0(self.theme_mode))
+                                                .child("Delete All"),
+                                        ),
                                 )
-                            })
-                    )
+                            }),
+                    ),
             )
             // Stats bar
             .child(
@@ -1501,25 +938,58 @@ impl DevCleaner {
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Quarantine Size:"))
-                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::peach(self.theme_mode)).child(total_size))
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(Theme::subtext0(self.theme_mode))
+                                    .child("Quarantine Size:"),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(Theme::peach(self.theme_mode))
+                                    .child(total_size),
+                            ),
                     )
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Total Items:"))
-                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::blue(self.theme_mode)).child(format!("{}", total_items)))
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(Theme::subtext0(self.theme_mode))
+                                    .child("Total Items:"),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(Theme::blue(self.theme_mode))
+                                    .child(format!("{}", total_items)),
+                            ),
                     )
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
-                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Records:"))
-                            .child(div().text_sm().font_weight(FontWeight::BOLD).text_color(Theme::lavender(self.theme_mode)).child(format!("{}", records.len())))
-                    )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(Theme::subtext0(self.theme_mode))
+                                    .child("Records:"),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(Theme::lavender(self.theme_mode))
+                                    .child(format!("{}", records.len())),
+                            ),
+                    ),
             )
             // Info banner
             .child(
@@ -1532,7 +1002,12 @@ impl DevCleaner {
                     .items_center()
                     .gap_2()
                     .child(div().text_sm().child("ℹ️"))
-                    .child(div().text_sm().text_color(Theme::blue(self.theme_mode)).child("Deleted files are quarantined for undo support. They are automatically cleaned when exceeding 10GB."))
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(Theme::blue(self.theme_mode))
+                            .child("Deleted files are quarantined for undo support. They are automatically cleaned when exceeding 10GB."),
+                    ),
             )
             // Records list
             .child(
@@ -1541,30 +1016,30 @@ impl DevCleaner {
                     .flex_1()
                     .w_full()
                     .overflow_y_scroll()
-                    .child(
-                        if records_empty {
-                            self.empty_state("No cleanup history yet")
-                        } else {
-                            div()
-                                .w_full()
-                                .flex()
-                                .flex_col()
-                                .children(
-                                    records.iter().enumerate().map(|(record_idx, record)| {
-                                        let record_items: Vec<_> = items.iter()
-                                            .filter(|item| item.record_id == record.id)
-                                            .cloned()
-                                            .collect();
+                    .child(if records_empty {
+                        self.empty_state("No cleanup history yet")
+                    } else {
+                        div().w_full().flex().flex_col().children(
+                            records.iter().enumerate().map(|(record_idx, record)| {
+                                let record_items: Vec<_> = items
+                                    .iter()
+                                    .filter(|item| item.record_id == record.id)
+                                    .cloned()
+                                    .collect();
 
-                                        self.render_quarantine_record(record.clone(), record_items, record_idx, cx)
-                                    })
+                                self.render_quarantine_record(
+                                    record.clone(),
+                                    record_items,
+                                    record_idx,
+                                    cx,
                                 )
-                        }
-                    )
+                            }),
+                        )
+                    }),
             )
     }
 
-    fn render_quarantine_record(
+    pub fn render_quarantine_record(
         &self,
         record: QuarantineRecordData,
         items: Vec<QuarantineItemData>,
@@ -1704,7 +1179,11 @@ impl DevCleaner {
             })
     }
 
-    fn render_quarantine_item(&self, item: QuarantineItemData, cx: &mut ViewContext<Self>) -> Div {
+    pub fn render_quarantine_item(
+        &self,
+        item: QuarantineItemData,
+        cx: &mut ViewContext<Self>,
+    ) -> Div {
         let success = item.success;
         let has_error = !item.error_message.is_empty();
         let deleted_permanently = item.deleted_permanently;
@@ -1809,7 +1288,7 @@ impl DevCleaner {
             })
     }
 
-    fn render_settings_tab(&mut self, cx: &mut ViewContext<Self>) -> Div {
+    pub fn render_settings_tab(&mut self, cx: &mut ViewContext<Self>) -> Div {
         let cache_ttls = self.cache_ttls.clone();
 
         div()
@@ -1828,7 +1307,13 @@ impl DevCleaner {
                     .justify_between()
                     .border_b_1()
                     .border_color(Theme::surface0(self.theme_mode))
-                    .child(div().text_xl().font_weight(FontWeight::BOLD).text_color(Theme::text(self.theme_mode)).child("Settings"))
+                    .child(
+                        div()
+                            .text_xl()
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(Theme::text(self.theme_mode))
+                            .child("Settings"),
+                    )
                     .child(
                         div()
                             .id("reset-defaults-btn")
@@ -1838,13 +1323,20 @@ impl DevCleaner {
                             .rounded_md()
                             .cursor_pointer()
                             .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-                            .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+                            .active(|style| {
+                                style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                            })
                             .on_click(cx.listener(|this, _event, cx| {
                                 this.reset_cache_defaults(cx);
                                 cx.notify();
                             }))
-                            .child(div().text_sm().text_color(Theme::text(self.theme_mode)).child("Reset to Defaults"))
-                    )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(Theme::text(self.theme_mode))
+                                    .child("Reset to Defaults"),
+                            ),
+                    ),
             )
             // Content
             .child(
@@ -1872,8 +1364,19 @@ impl DevCleaner {
                                             .flex()
                                             .flex_col()
                                             .gap_1()
-                                            .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).text_color(Theme::text(self.theme_mode)).child("Cache TTL Settings"))
-                                            .child(div().text_sm().text_color(Theme::subtext0(self.theme_mode)).child("Configure how long scan results are cached for each category."))
+                                            .child(
+                                                div()
+                                                    .text_lg()
+                                                    .font_weight(FontWeight::SEMIBOLD)
+                                                    .text_color(Theme::text(self.theme_mode))
+                                                    .child("Cache TTL Settings"),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_sm()
+                                                    .text_color(Theme::subtext0(self.theme_mode))
+                                                    .child("Configure how long scan results are cached for each category."),
+                                            ),
                                     )
                                     // TTL list
                                     .child(
@@ -1885,10 +1388,12 @@ impl DevCleaner {
                                             .border_color(Theme::surface1(self.theme_mode))
                                             .flex()
                                             .flex_col()
-                                            .children(cache_ttls.iter().map(|ttl| {
-                                                self.render_ttl_setting(ttl.clone())
-                                            }))
-                                    )
+                                            .children(
+                                                cache_ttls
+                                                    .iter()
+                                                    .map(|ttl| self.render_ttl_setting(ttl.clone())),
+                                            ),
+                                    ),
                             )
                             // Info section
                             .child(
@@ -1908,15 +1413,26 @@ impl DevCleaner {
                                             .items_center()
                                             .gap_2()
                                             .child(div().text_base().child("💡"))
-                                            .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).text_color(Theme::blue(self.theme_mode)).child("Cache TTL Explained"))
+                                            .child(
+                                                div()
+                                                    .text_sm()
+                                                    .font_weight(FontWeight::SEMIBOLD)
+                                                    .text_color(Theme::blue(self.theme_mode))
+                                                    .child("Cache TTL Explained"),
+                                            ),
                                     )
-                                    .child(div().text_sm().text_color(Theme::subtext1(self.theme_mode)).child("TTL determines how long cached results remain valid. A value of 0 means always rescan."))
-                            )
-                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(Theme::subtext1(self.theme_mode))
+                                            .child("TTL determines how long cached results remain valid. A value of 0 means always rescan."),
+                                    ),
+                            ),
+                    ),
             )
     }
 
-    fn render_ttl_setting(&self, setting: CacheTTLSetting) -> Div {
+    pub fn render_ttl_setting(&self, setting: CacheTTLSetting) -> Div {
         let ttl_display = if setting.ttl_minutes == 0 {
             "Never".to_string()
         } else if setting.ttl_minutes < 60 {
@@ -1962,7 +1478,7 @@ impl DevCleaner {
             )
     }
 
-    fn render_about_tab(&self) -> Div {
+    pub fn render_about_tab(&self) -> Div {
         div()
             .w_full()
             .h_full()
@@ -1979,37 +1495,29 @@ impl DevCleaner {
                     .flex_col()
                     .items_center()
                     .gap_4()
-                    .child(
-                        svg()
-                            .path(self.theme_mode.icon_path())
-                            .size(px(80.0))
-                    )
+                    .child(svg().path(self.theme_mode.icon_path()).size(px(80.0)))
                     .child(
                         div()
                             .text_2xl()
                             .font_weight(FontWeight::BOLD)
                             .text_color(Theme::text(self.theme_mode))
-                            .child("DevSweep")
+                            .child("DevSweep"),
                     )
                     .child(
                         div()
                             .text_sm()
                             .text_color(Theme::subtext0(self.theme_mode))
-                            .child("Version 0.1.0")
-                    )
+                            .child("Version 0.1.0"),
+                    ),
             )
             // Description
             .child(
-                div()
-                    .max_w(px(500.0))
-                    .flex()
-                    .justify_center()
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(Theme::subtext1(self.theme_mode))
-                            .child("A powerful tool for cleaning up development-related caches, temporary files, and unused data on your Mac.")
-                    )
+                div().max_w(px(500.0)).flex().justify_center().child(
+                    div()
+                        .text_sm()
+                        .text_color(Theme::subtext1(self.theme_mode))
+                        .child("A powerful tool for cleaning up development-related caches, temporary files, and unused data on your Mac."),
+                ),
             )
             // Features
             .child(
@@ -2020,12 +1528,18 @@ impl DevCleaner {
                     .p_4()
                     .bg(Theme::surface0(self.theme_mode))
                     .rounded_lg()
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).text_color(Theme::text(self.theme_mode)).child("Features"))
+                    .child(
+                        div()
+                            .text_sm()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(Theme::text(self.theme_mode))
+                            .child("Features"),
+                    )
                     .child(self.feature_item("🔍", "Scan 16+ categories of development caches"))
                     .child(self.feature_item("🛡️", "Safe deletion with quarantine support"))
                     .child(self.feature_item("↩️", "Undo cleanup operations"))
                     .child(self.feature_item("⚡", "Incremental scanning with smart caching"))
-                    .child(self.feature_item("⚙️", "Customizable cache TTL settings"))
+                    .child(self.feature_item("⚙️", "Customizable cache TTL settings")),
             )
             // Built with
             .child(
@@ -2034,19 +1548,24 @@ impl DevCleaner {
                     .flex_col()
                     .items_center()
                     .gap_2()
-                    .child(div().text_xs().text_color(Theme::overlay0(self.theme_mode)).child("Built with"))
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(Theme::overlay0(self.theme_mode))
+                            .child("Built with"),
+                    )
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_4()
                             .child(self.tech_badge("🦀", "Rust"))
-                            .child(self.tech_badge("⚡", "GPUI"))
-                    )
+                            .child(self.tech_badge("⚡", "GPUI")),
+                    ),
             )
     }
 
-    fn feature_item(&self, icon: &str, text: &str) -> Div {
+    pub fn feature_item(&self, icon: &str, text: &str) -> Div {
         div()
             .flex()
             .items_center()
@@ -2060,7 +1579,7 @@ impl DevCleaner {
             )
     }
 
-    fn tech_badge(&self, icon: &str, name: &str) -> Div {
+    pub fn tech_badge(&self, icon: &str, name: &str) -> Div {
         div()
             .flex()
             .items_center()
@@ -2077,23 +1596,4 @@ impl DevCleaner {
                     .child(name.to_string()),
             )
     }
-}
-
-fn main() {
-    App::new().run(|cx: &mut AppContext| {
-        let bounds = Bounds::centered(None, size(px(1000.0), px(700.0)), cx);
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                titlebar: Some(TitlebarOptions {
-                    title: Some("DevSweep".into()),
-                    appears_transparent: false,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            |cx| cx.new_view(|_cx| DevCleaner::new()),
-        )
-        .unwrap();
-    });
 }
