@@ -54,7 +54,28 @@ jobs:
             ## Installation
 
             ### macOS App Bundle
-            Download the `.dmg` file below and drag DevSweep.app to your Applications folder.
+            1. Download the `.dmg` file below
+            2. Open the DMG and drag DevSweep.app to your Applications folder
+            3. **First Launch (Gatekeeper Bypass)**
+
+               Since this app is not notarized with Apple, macOS will block it. Use one of these methods:
+
+               **Method 1: Terminal (Recommended)**
+               ```bash
+               xattr -cr /Applications/DevSweep.app
+               ```
+               Then double-click to open normally.
+
+               **Method 2: System Settings**
+               - Try to open the app (it will be blocked)
+               - Open **System Settings → Privacy & Security**
+               - Scroll down to find "DevSweep was blocked..."
+               - Click **"Open Anyway"**
+               - Enter your password if prompted
+
+            4. Grant **Full Disk Access** for best results:
+               - Go to **System Settings → Privacy & Security → Full Disk Access**
+               - Click the **+** button and add DevSweep.app
 
             ### Build from Source
             See the [README](https://github.com/canggihpw/devsweep/blob/main/README.md#installation) for build instructions.
