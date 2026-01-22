@@ -19,23 +19,11 @@ Welcome to the DevSweep documentation! This directory contains comprehensive gui
 - **[Versioning Guide](VERSIONING.md)** - Semantic versioning and release process
 - **[Changelog](../CHANGELOG.md)** - Version history and changes
 
-### For Maintainers
-
-- **[Maintainer Guide](MAINTAINER_GUIDE.md)** - Complete guide for project maintainers
-- **[Testing Guide](TESTING.md)** - Comprehensive testing strategy and plan
-
 ### Technical Documentation
 
 - **[Project Summary](PROJECT_SUMMARY.md)** - High-level project overview and architecture
-- **[Architecture Overview](../README.md#architecture)** - System design and components
-- **[How It Works](../README.md#how-it-works)** - Internal mechanisms
-- **[Adding New Checkers](../CONTRIBUTING.md#adding-new-checkers)** - Guide for adding support for new tools
-
-### Test Coverage
-
-- **[Coverage Improvement Plan](coverage/README.md)** - Plan to increase test coverage from 30% to 60-70%
-- **[Detailed Plan](coverage/IMPROVEMENT_PLAN.md)** - Phase-by-phase implementation guide
-- **[Quick Checklist](coverage/QUICK_CHECKLIST.md)** - Daily goals and task checklists
+- **[Testing Guide](TESTING.md)** - Comprehensive testing strategy and guide
+- **[Coverage Documentation](coverage/README.md)** - Test coverage status and improvement guide
 
 ## Project Structure
 
@@ -43,20 +31,59 @@ Welcome to the DevSweep documentation! This directory contains comprehensive gui
 devsweep/
 ├── src/                    # Source code
 │   ├── main.rs            # Application entry point
+│   ├── lib.rs             # Library exports
 │   ├── backend.rs         # Core scanning logic
 │   ├── types.rs           # Type definitions
+│   ├── utils.rs           # Utility functions
+│   ├── scan_cache.rs      # Cache management
+│   ├── cleanup_history.rs # Quarantine system
+│   ├── cache_settings.rs  # Settings persistence
+│   ├── single_instance.rs # Single-instance handling
+│   ├── assets.rs          # Asset loading
 │   ├── checkers/          # Tool-specific scanners
-│   └── ui/                # User interface components
+│   │   ├── mod.rs
+│   │   ├── docker.rs
+│   │   ├── homebrew.rs
+│   │   ├── nodejs.rs
+│   │   ├── python.rs
+│   │   ├── rust_cargo.rs
+│   │   ├── xcode.rs
+│   │   ├── java.rs
+│   │   ├── go.rs
+│   │   ├── ide.rs
+│   │   ├── shell.rs
+│   │   ├── db.rs
+│   │   ├── logs.rs
+│   │   ├── browser.rs
+│   │   └── general.rs
+│   ├── app/               # GPUI application
+│   │   ├── mod.rs
+│   │   ├── state.rs
+│   │   ├── actions.rs
+│   │   ├── render.rs
+│   │   └── tabs/
+│   └── ui/                # UI components
+│       ├── mod.rs
+│       ├── sidebar.rs
+│       └── theme.rs
+├── tests/                 # Test files (332 tests)
+│   ├── test_backend.rs
+│   ├── test_scan_cache.rs
+│   ├── test_cleanup_history.rs
+│   ├── test_edge_cases.rs
+│   ├── test_persistence.rs
+│   ├── test_integration_workflows.rs
+│   ├── test_single_instance.rs
+│   └── ... (more test files)
 ├── scripts/               # Build and utility scripts
 ├── assets/                # Icons and images
 ├── docs/                  # Documentation (you are here)
 │   ├── README.md          # This file
 │   ├── PROJECT_SUMMARY.md # Project overview
-│   ├── GIT_WORKFLOW.md    # Git workflow and branching strategy
+│   ├── GIT_WORKFLOW.md    # Git workflow
 │   ├── VERSIONING.md      # Versioning guide
-│   ├── MAINTAINER_GUIDE.md # Maintainer guide
-│   ├── TESTING.md         # Testing strategy
-│   └── coverage/          # Test coverage improvement docs
+│   ├── TESTING.md         # Testing guide
+│   └── coverage/          # Coverage documentation
 ├── .github/               # GitHub-specific files
 │   ├── workflows/         # CI/CD workflows
 │   └── ISSUE_TEMPLATE/    # Issue templates
@@ -65,8 +92,18 @@ devsweep/
 ├── CHANGELOG.md           # Version history
 ├── LICENSE                # MIT License
 ├── README.md              # Main project README
-└── Cargo.toml            # Rust dependencies
+├── Cargo.toml             # Rust dependencies
+└── codecov.yml            # Coverage configuration
 ```
+
+## Current Status
+
+| Metric | Value |
+|--------|-------|
+| Version | 0.1.0 |
+| Tests | 332 |
+| Coverage | 57.33% |
+| Pass Rate | 100% |
 
 ## Quick Links
 
@@ -87,29 +124,18 @@ devsweep/
 
 - [macOS App Distribution](https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution)
 - [Code Signing Guide](https://developer.apple.com/support/code-signing/)
-- [App Bundle Documentation](https://developer.apple.com/library/archive/documentation/CoreFoundation/Conceptual/CFBundles/BundleTypes/BundleTypes.html)
 
 ## Getting Help
 
 - **Issues**: Open an issue on GitHub for bugs or feature requests
-- **Discussions**: Use GitHub Discussions for questions and general discussion
+- **Discussions**: Use GitHub Discussions for questions
 - **Contributing**: See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines
-
-## Documentation Contributions
-
-We welcome improvements to our documentation! If you find:
-- Typos or errors
-- Unclear explanations
-- Missing information
-- Outdated content
-
-Please submit a pull request or open an issue.
 
 ## License
 
-This documentation is part of DevSweep and is licensed under the MIT License. See [LICENSE](../LICENSE) for details.
+This documentation is part of DevSweep and is licensed under the MIT License.
 
 ---
 
-**Last Updated**: 2024
+**Last Updated**: January 2026
 **Project Repository**: https://github.com/canggihpw/devsweep
