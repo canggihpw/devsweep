@@ -76,7 +76,7 @@ fn test_binary_garbage_in_cache_file() {
 
     // Write binary garbage
     let cache_file = cache_dir.join("scan_cache.json");
-    fs::write(&cache_file, &[0xFF, 0xFE, 0x00, 0x01, 0xAB, 0xCD]).unwrap();
+    fs::write(&cache_file, [0xFF, 0xFE, 0x00, 0x01, 0xAB, 0xCD]).unwrap();
 
     // Should handle gracefully (new instance, not crash)
     let cache = ScanCache::new();
@@ -298,7 +298,7 @@ fn test_corrupted_config_recovery() {
     let config = CacheConfig::default_config();
 
     // Default config should have TTLs
-    assert!(config.category_ttls.len() > 0);
+    assert!(!config.category_ttls.is_empty());
 }
 
 #[test]
