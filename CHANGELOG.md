@@ -8,10 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project setup and structure
+- Comprehensive test suite with 332 tests achieving 57.33% line coverage
+- Edge case tests for symlinks, unicode filenames, permissions, long paths
+- Persistence tests for corrupted data recovery
+- Integration workflow tests for end-to-end scenarios
+- Single instance module (`src/single_instance.rs`) extracted for testability
+- Library exports (`src/lib.rs`) for better code organization
+- Codecov configuration with UI code exclusions
+
+### Changed
+- Refactored `main.rs` to use library module for single-instance handling
+- Consolidated coverage documentation into single README
+- Updated CI workflow to run only on pull requests
+
+### Removed
+- Obsolete planning documents (IMPROVEMENT_PLAN.md, PHASE1_COMPLETION.md, etc.)
+
+## [0.1.0] - 2026-01-21
+
+### Added
+- Initial release
 - Core scanning functionality for development tool caches
 - GPUI-based desktop interface with modern UI
-- Support for multiple development tool categories:
+- Support for 16 development tool categories:
   - Node.js (node_modules, npm/yarn/pnpm caches)
   - Python (pip cache, __pycache__, virtual environments)
   - Rust/Cargo (target directories, cargo cache)
@@ -25,35 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Database caches (PostgreSQL, MySQL, Redis)
   - Shell history and logs
   - System logs
+  - General caches
+  - Trash
 - Quarantine system for safe cache removal
 - Scan caching for improved performance
 - Settings tab for cache configuration
 - About tab with app information
+- Light/dark theme support (Catppuccin Latte/Mocha)
+- Single-instance app behavior
 - Build scripts for macOS app bundle creation
 - DMG creation for distribution
-
-### Changed
-- N/A
-
-### Deprecated
-- N/A
-
-### Removed
-- N/A
-
-### Fixed
-- N/A
-
-### Security
-- N/A
-
-## [0.1.0] - 2026-01-21
-
-### Added
-- Initial release
-- Basic scanning functionality
-- Quarantine system
-- macOS app support
 
 ---
 
@@ -72,12 +72,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/canggihpw/devsweep/releases/tag/v0.1.0
-
-### Notes
-
-- Update this file with every significant change
-- Group changes by category
-- Keep descriptions clear and concise
-- Link to relevant issues/PRs when applicable
-- Update version links when creating new releases
-- Date format: YYYY-MM-DD (ISO 8601)

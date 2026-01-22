@@ -15,9 +15,9 @@ coverage:
   range: 50..90 # Coverage range (red to green)
 
 ignore:
-  - "src/main.rs" # Ignore main entry point
-  - "src/ui/**" # Ignore UI components (hard to test)
-  - "src/app.rs" # Ignore GPUI app setup
+  - "src/main.rs" # Ignore main entry point (GUI initialization)
+  - "src/ui/**" # Ignore UI components (requires display)
+  - "src/app/**" # Ignore GPUI app modules (requires display)
   - "src/assets.rs" # Ignore asset loading
   - "tests/**" # Don't include tests in coverage
 

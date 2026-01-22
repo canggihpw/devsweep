@@ -27,24 +27,24 @@ DevSweep provides:
 
 ## Key Features
 
-### 🔍 Intelligent Scanning
+### Intelligent Scanning
 - Detects caches from 16+ development tools and frameworks
 - Smart caching system for improved performance
 - Parallel scanning for speed
 - Real-time size calculation
 
-### 💾 Safe Quarantine System
+### Safe Quarantine System
 - Move files to quarantine before permanent deletion
 - Undo capability to restore quarantined files
 - Individual item management
 - Automatic cleanup of old quarantined items
 
-### ⚙️ Customizable Settings
+### Customizable Settings
 - Configurable cache TTL (Time-To-Live)
 - Enable/disable cache functionality
 - Adjustable scan behavior
 
-### 🎨 Modern User Interface
+### Modern User Interface
 - Native macOS look and feel
 - Light and dark theme support (Catppuccin Latte/Mocha)
 - Responsive design with tab-based navigation
@@ -84,6 +84,7 @@ DevSweep provides:
 - **Backend**: Core scanning and quarantine logic
 - **UI**: Separate presentation layer
 - **Cache System**: Persistent scan results
+- **Single Instance**: Unix socket-based instance detection
 
 ### Performance Optimizations
 - Parallel directory traversal with Rayon
@@ -92,10 +93,39 @@ DevSweep provides:
 - Minimal memory footprint
 
 ### Safety First
-- Two-stage deletion (quarantine → permanent)
+- Two-stage deletion (quarantine -> permanent)
 - File locking to prevent conflicts
 - Atomic operations
 - Comprehensive error handling
+
+## Project Status
+
+**Current Version**: 0.1.0
+
+**Test Coverage**: 57.33% (332 tests, 100% pass rate)
+
+**Stability**: Alpha - Core functionality working, API may change
+
+### Completed Features
+- Core scanning functionality
+- Quarantine system
+- Modern GPUI-based UI
+- Support for major development tools
+- Light/dark theme toggle
+- Single-instance app behavior
+- Embedded app icons
+- Comprehensive test suite
+
+### In Progress
+- Additional checker improvements
+- Performance optimization
+
+### Planned
+- Additional tool support
+- Scheduled scanning
+- Advanced filtering
+- Plugin system for custom checkers
+- Cross-platform support (Linux, Windows)
 
 ## Use Cases
 
@@ -109,83 +139,6 @@ DevSweep provides:
 - Maintain clean development environments
 - Reduce onboarding friction for new machines
 
-### For CI/CD Environments
-- Programmatic cache cleanup
-- Automated maintenance scripts
-- Build environment optimization
-
-## Project Goals
-
-### Short-term (v0.x)
-- ✅ Core scanning functionality
-- ✅ Quarantine system
-- ✅ Modern GPUI-based UI
-- ✅ Support for major development tools
-- ✅ Light/dark theme toggle
-- ✅ Single-instance app behavior
-- ✅ Embedded app icons
-- 🔄 Comprehensive testing
-- 🔄 Performance benchmarking
-
-### Mid-term (v1.x)
-- 📋 Additional tool support
-- 📋 Export/import functionality
-- 📋 Scheduled scanning
-- 📋 Advanced filtering
-- 📋 Plugin system for custom checkers
-
-### Long-term (v2.x+)
-- 📋 Cross-platform support (Linux, Windows)
-- 📋 Cloud storage integration
-- 📋 Team collaboration features
-- 📋 Analytics and insights
-
-## Project Status
-
-**Current Version**: 0.1.0 (Initial Development)
-
-**Status**: Active Development
-
-**Stability**: Alpha - Core functionality working, API may change
-
-## Community
-
-### Contributing
-We welcome contributions! See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
-
-Areas where we need help:
-- Adding support for more development tools
-- Performance optimizations
-- UI/UX improvements
-- Documentation
-- Testing on different macOS versions
-
-### Code of Conduct
-We are committed to providing a welcoming and inclusive environment. See [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md).
-
-## License
-
-MIT License - See [LICENSE](../LICENSE) for details.
-
-Free and open source, forever.
-
-## Comparison with Similar Tools
-
-### vs. DevCleaner for Xcode
-- **Broader scope**: Supports 16+ tools, not just Xcode
-- **Modern tech**: Built with Rust and GPUI
-- **Active development**: Regular updates and improvements
-
-### vs. Manual cleanup scripts
-- **User-friendly**: GUI instead of command-line
-- **Safe**: Quarantine system prevents accidental deletion
-- **Comprehensive**: Automatically finds all cache locations
-
-### vs. Disk cleanup utilities
-- **Developer-focused**: Understands development tool structures
-- **Intelligent**: Knows which files are safe to remove
-- **Reversible**: Quarantine system allows undo
-
 ## Metrics & Goals
 
 ### Performance Targets
@@ -193,34 +146,16 @@ Free and open source, forever.
 - Full scan in < 30 seconds (without cache)
 - Memory usage < 100MB during operation
 
-### Coverage Goals
-- Support top 20 development tools/languages
-- Detect 95%+ of common cache locations
-- Zero false positives (only scan actual caches)
-
-## Future Vision
-
-DevSweep aims to become the essential maintenance tool for every developer's macOS machine, providing:
-- Zero-configuration automatic cache management
-- Intelligent predictions of safe-to-delete files
-- Integration with development workflows
-- Community-driven tool support
+### Test Coverage Goals
+- Current: 57.33% line coverage (excluding UI)
+- Target: Maintain above 50% coverage
 
 ## Links
 
 - **Repository**: https://github.com/canggihpw/devsweep
 - **Issues**: https://github.com/canggihpw/devsweep/issues
-- **Discussions**: https://github.com/canggihpw/devsweep/discussions
 - **Releases**: https://github.com/canggihpw/devsweep/releases
 
-## Recognition
+## License
 
-Built with:
-- ❤️ by the open source community
-- 🦀 Rust language
-- ⚡ GPUI framework from Zed Industries
-- 🎨 Modern design principles
-
----
-
-**Join us in making development cleaner, one cache at a time!** ✨
+MIT License - See [LICENSE](../LICENSE) for details.

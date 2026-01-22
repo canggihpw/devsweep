@@ -275,7 +275,9 @@ The app requires Full Disk Access to scan all directories:
 ```
 devsweep/
 ├── src/
-│   ├── main.rs              # App entry point, single-instance handling
+│   ├── main.rs              # App entry point
+│   ├── lib.rs               # Library exports
+│   ├── single_instance.rs   # Unix socket single-instance handling
 │   ├── assets.rs            # Embedded assets (rust-embed + image loading)
 │   ├── backend.rs           # Core scanning and cleanup logic
 │   ├── types.rs             # Data structures
@@ -532,6 +534,8 @@ xcrun stapler staple "DevSweep-0.1.0.dmg"
   - Uses Catppuccin Latte (light) and Mocha (dark) palettes
   - Theme-aware icons that adapt to current mode
 - [x] **Single-instance app**: Prevents multiple windows when reopening
+- [x] **Comprehensive testing**: 332 tests with 57% line coverage (excluding UI)
+- [x] **Performance benchmarks**: Cached scans complete in < 100ms
 
 ### Planned Features
 

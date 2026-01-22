@@ -2,237 +2,293 @@
 
 ## Overview
 
-This document outlines the comprehensive testing strategy for DevSweep, ensuring code quality, reliability, and safety.
+This document describes the testing strategy for DevSweep. The project has comprehensive test coverage with 332 tests achieving 57.33% line coverage on testable (non-UI) code.
 
 ## Testing Philosophy
 
-1. **Safety First**: Test quarantine and deletion operations thoroughly
-2. **Fast Feedback**: Unit tests should run quickly
-3. **Comprehensive Coverage**: Test all critical paths
-4. **Real-world Scenarios**: Integration tests mimic actual usage
-5. **Performance Validation**: Ensure speed targets are met
+1. **Safety First**: All file operations are thoroughly tested to prevent data loss
+2. **Isolation**: Tests use `TempDir` for isolated file system operations
+3. **No Hardcoded Paths**: All paths generated at runtime
+4. **Edge Cases**: Unicode, symlinks, permissions, and error conditions are tested
+5. **Automation**: All tests run in CI/CD via GitHub Actions
+
+## Test Structure
+
+```
+tests/
+├── test_backend.rs              # 28 tests - Core backend operations
+├── test_scan_cache.rs           # 29 tests - Cache TTL, persistence
+├── test_cleanup_history.rs      # 22 tests - Quarantine, restore
+├── test_edge_cases.rs           # 41 tests - Edge cases & error handling
+├── test_persistence.rs          # 35 tests - Data recovery
+├── test_integration_workflows.rs # 24 tests - End-to-end workflows
+├── test_single_instance.rs      # 14 tests - Unix socket handling
+├── test_checkers.rs             # 16 tests - Checker functionality
+├── test_types.rs                # 13 tests - Type structures
+├── test_nodejs_checker.rs       # 17 tests - Node.js cache structures
+├── test_docker_checker.rs       # 16 tests - Docker cache structures
+├── test_python_checker.rs       # 21 tests - Python cache structures
+├── test_xcode_checker.rs        # 23 tests - Xcode cache structures
+├── test_cache_settings.rs       #  3 tests - Settings
+├── test_utils.rs                #  2 tests - Utilities
+└── performance_tests.rs         #  5 tests - Benchmarks
+```
+
+## Running Tests
+
+```bash
+# Run all tests
+cargo test
+
+# Run with output
+cargo test -- --nocapture
+
+# Run specific test file
+cargo test --test test_backend
+
+# Run specific test
+cargo test test_scan_with_cache
+
+# Run tests matching pattern
+cargo test quarantine
+
+# Run tests in parallel (default)
+cargo test -- --test-threads=4
+```
+
+## Coverage Commands
+
+```bash
+# Generate coverage report (excluding UI)
+cargo llvm-cov --ignore-filename-regex '(src/main\.rs|src/ui/|src/app/|src/assets\.rs|tests/)'
+
+# HTML report
+cargo llvm-cov --html --open
+
+# Summary only
+cargo llvm-cov --summary-only
+```
 
 ## Test Categories
 
 ### 1. Unit Tests
-Test individual functions and modules in isolation.
 
-**Coverage Areas**:
-- ✅ Cache settings (TTL, presets, formatting)
-- ✅ Cleanup history (records, persistence)
-- ✅ Scan cache (metadata tracking, invalidation)
-- ✅ Utility functions (formatting, sorting)
-- 🔄 Individual checkers (browser, docker, nodejs, etc.)
-- 🔄 Backend operations (scanning, quarantine)
+Test individual components in isolation.
 
-### 2. Integration Tests
-Test component interactions and workflows.
+#### Backend (`test_backend.rs`)
+- [x] Category data creation and cloning
+- [x] Execute cleanup with real temp files
+- [x] Execute cleanup with directories
+- [x] Handle invalid/nonexistent paths
+- [x] Get items for category
+- [x] Quarantine records retrieval
+- [x] Cache usage in sequential scans
+- [x] Rescan consistency
 
-**Coverage Areas**:
-- 🔄 Scan with cache workflow
-- 🔄 Quarantine and restore operations
-- 🔄 History tracking during cleanup
-- 🔄 Multi-category scanning
-- 🔄 Settings persistence across operations
+#### Cache Settings (`test_cache_settings.rs`)
+- [x] TTL formatting
+- [x] Preset configurations
+- [x] Trash settings validation
 
-### 3. Functional Tests
-Test complete user workflows end-to-end.
+#### Cleanup History (`test_cleanup_history.rs`)
+- [x] Record creation
+- [x] History save/load
+- [x] Quarantine operations
+- [x] Restore from quarantine
+- [x] Unicode filename handling
+- [x] Directory quarantine
 
-**Coverage Areas**:
-- 🔄 Complete scan → select → quarantine → restore flow
-- 🔄 Settings modification and persistence
-- 🔄 Cache invalidation scenarios
-- 🔄 Error recovery
+#### Scan Cache (`test_scan_cache.rs`)
+- [x] Metadata change detection
+- [x] Cache save/load
+- [x] TTL expiration
+- [x] Path tracking
+- [x] Concurrent updates
 
-### 4. Performance Tests
-Validate performance targets.
+#### Single Instance (`test_single_instance.rs`)
+- [x] Socket path generation
+- [x] Socket communication protocol
+- [x] Connection timeout behavior
+- [x] Stale socket cleanup
 
-**Targets**:
-- Scan with cache: < 5 seconds
-- Full scan: < 30 seconds
-- Memory usage: < 100MB
+#### Types (`test_types.rs`)
+- [x] CheckResult creation
+- [x] CleanupItem builder pattern
+- [x] ItemDetail structures
 
-### 5. Safety Tests
-Ensure data safety and error handling.
+#### Utils (`test_utils.rs`)
+- [x] Size formatting
+- [x] Version sorting
 
-**Coverage Areas**:
-- 🔄 Quarantine rollback functionality
-- 🔄 File locking mechanisms
-- 🔄 Permission errors
-- 🔄 Invalid path handling
+### 2. Checker Tests
 
-## Running Tests
+Each checker has dedicated tests for cache structure detection.
 
-### Quick Test
-```bash
-cargo test
-```
+#### Node.js (`test_nodejs_checker.rs`)
+- [x] node_modules detection
+- [x] npm cache structures
+- [x] yarn cache detection
+- [x] pnpm store detection
+- [x] Scoped packages
+- [x] Large structure handling
 
-### Verbose Output
-```bash
-cargo test -- --nocapture
-```
+#### Docker (`test_docker_checker.rs`)
+- [x] Build cache structure
+- [x] Image cache structure
+- [x] Container logs
+- [x] Volumes structure
+- [x] Overlay2 structure
 
-### Specific Test
-```bash
-cargo test test_name
-```
+#### Python (`test_python_checker.rs`)
+- [x] `__pycache__` detection
+- [x] pip cache structures
+- [x] virtualenv detection
+- [x] pytest/mypy cache
+- [x] Jupyter/IPython cache
 
-### With Coverage (requires cargo-tarpaulin)
-```bash
-cargo tarpaulin --out Html --output-dir coverage
-```
+#### Xcode (`test_xcode_checker.rs`)
+- [x] DerivedData detection
+- [x] Archives detection
+- [x] Device support
+- [x] Module cache
+- [x] Simulator devices
 
-### Run All Tests with Script
-```bash
-./scripts/run-tests.sh
-```
+### 3. Edge Case Tests (`test_edge_cases.rs`)
 
-## Test Structure
+- [x] Symlink handling (circular, broken)
+- [x] Permission denied scenarios
+- [x] Unicode filenames (emoji, CJK, Arabic)
+- [x] Long paths (>255 chars)
+- [x] Empty directories
+- [x] Zero-size files
+- [x] Large file metadata
+- [x] Special characters in paths
+- [x] Deeply nested directories
 
-### Unit Test Location
-Unit tests are placed in the same file as the code they test, in a `tests` module:
+### 4. Persistence Tests (`test_persistence.rs`)
+
+- [x] Corrupted JSON recovery
+- [x] Truncated file handling
+- [x] Empty file recovery
+- [x] Missing directory creation
+- [x] Binary garbage in files
+- [x] Wrong JSON structure handling
+- [x] Unicode in paths/names
+- [x] Save/load roundtrip
+
+### 5. Integration Tests (`test_integration_workflows.rs`)
+
+- [x] Full scan workflow
+- [x] Scan with cache
+- [x] Quarantine and restore workflow
+- [x] Cleanup history tracking
+- [x] Multiple cleanup sessions
+- [x] Cache invalidation
+- [x] Concurrent access safety
+- [x] Error recovery
+
+### 6. Performance Tests (`performance_tests.rs`)
+
+- [x] Scan performance targets
+- [x] Cached scan performance
+- [x] Large directory handling
+- [x] Parallel scanning efficiency
+- [x] Memory usage
+
+## Test Patterns
+
+### Using TempDir for Isolation
 
 ```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
+use tempfile::TempDir;
+use std::fs;
 
-    #[test]
-    fn test_something() {
-        // Test implementation
-    }
+#[test]
+fn test_example() {
+    let temp = TempDir::new().unwrap();
+    let test_file = temp.path().join("test.txt");
+    fs::write(&test_file, "content").unwrap();
+    
+    // Test logic here
+    
+    // TempDir automatically cleaned up when dropped
 }
 ```
 
-### Integration Test Location
-Integration tests go in `tests/` directory (to be created):
-- `tests/integration/`
-- `tests/functional/`
-- `tests/performance/`
+### Testing File Operations
 
-## Test Data
-
-### Mock Directories
-Tests use temporary directories created with `tempfile` crate.
-
-### Test Fixtures
-- Sample cache directories
-- Mock configuration files
-- Predefined scan results
-
-## Writing New Tests
-
-### Guidelines
-1. **Descriptive Names**: `test_quarantine_restores_all_files`
-2. **Arrange-Act-Assert**: Clear test structure
-3. **Isolated**: Tests don't depend on each other
-4. **Deterministic**: Same input = same output
-5. **Clean Up**: Remove temporary files
-
-### Example
 ```rust
 #[test]
-fn test_format_size_kilobytes() {
-    let size = 1024;
-    let formatted = format_size(size);
-    assert!(formatted.contains("Ki") || formatted.contains("KB"));
+fn test_quarantine_file() {
+    let temp = TempDir::new().unwrap();
+    let file_path = temp.path().join("to_quarantine.txt");
+    fs::write(&file_path, "test content").unwrap();
+    
+    let mut history = CleanupHistory::default();
+    history.quarantine_item(&file_path).unwrap();
+    
+    assert!(!file_path.exists());
+    // File now in quarantine
 }
 ```
 
-## Continuous Integration
+### Testing Error Conditions
 
-Tests run automatically on:
-- Every pull request
-- Main branch commits
-- Release tags
-
-## Coverage Goals
-
-- **Overall**: 70%+ code coverage
-- **Critical paths**: 90%+ coverage
-  - Quarantine operations
-  - File deletion
-  - Cache invalidation
-- **Checkers**: 60%+ coverage (due to file system dependencies)
-
-## Testing Tools
-
-### Required
-- `cargo test` - Built-in test runner
-- `tempfile` - Temporary directories for tests
-
-### Optional
-- `cargo-tarpaulin` - Code coverage
-- `cargo-nextest` - Faster test runner
-- `mockall` - Mocking framework (if needed)
-
-## Performance Benchmarking
-
-### Micro-benchmarks
-Use `criterion` crate for performance-critical functions:
 ```rust
-#[bench]
-fn bench_scan_performance(b: &mut Bencher) {
-    b.iter(|| scan_directory(test_path));
+#[test]
+fn test_corrupted_json_recovery() {
+    let temp = TempDir::new().unwrap();
+    let cache_file = temp.path().join("cache.json");
+    fs::write(&cache_file, "{ invalid json }}}").unwrap();
+    
+    let cache = ScanCache::load_from(&cache_file);
+    // Should return default, not panic
+    assert!(cache.categories.is_empty());
 }
 ```
 
-### Real-world Benchmarks
-Track scanning performance on actual development machines.
+## CI/CD Integration
 
-## Known Testing Challenges
+Tests run automatically on pull requests via GitHub Actions:
 
-### File System Operations
-- Require real directories (harder to mock)
-- Platform-specific (macOS-only)
-- Permissions may vary
+```yaml
+# .github/workflows/ci.yml
+- name: Run tests
+  run: cargo test --all-features
 
-**Solution**: Use temporary directories and skip tests if permissions denied.
+- name: Generate coverage
+  run: cargo llvm-cov --lcov --output-path lcov.info
 
-### GUI Tests
-- GPUI framework doesn't have built-in testing
-- Requires manual testing or screenshot comparison
+- name: Upload to Codecov
+  uses: codecov/codecov-action@v4
+```
 
-**Solution**: Focus on backend logic testing; manual UI testing.
+## Coverage Exclusions
 
-### Parallel Scanning
-- Rayon makes timing non-deterministic
-- Hard to test exact ordering
+UI code is excluded from coverage as it requires GUI testing:
 
-**Solution**: Test outcomes, not exact sequence.
+- `src/main.rs` - Application entry point
+- `src/app/**` - GPUI app modules
+- `src/ui/**` - UI components
+- `src/assets.rs` - Asset loading
 
-## Testing Checklist
+See `codecov.yml` for full configuration.
 
-Before releasing:
-- [ ] All unit tests pass
-- [ ] Integration tests pass
-- [ ] No regression in performance benchmarks
-- [ ] Manual testing on clean macOS installation
-- [ ] Test with and without Full Disk Access
-- [ ] Verify quarantine system works
-- [ ] Test with large directories (> 100GB scan)
-- [ ] Verify cache invalidation works correctly
-- [ ] Test theme switching
-- [ ] Test single-instance behavior
+## Adding New Tests
 
-## Future Testing Improvements
+1. Create test file in `tests/` directory
+2. Follow naming convention: `test_<module>.rs`
+3. Use `TempDir` for file operations
+4. Test both success and error paths
+5. Run `cargo test` to verify
+6. Check coverage with `cargo llvm-cov`
 
-- [ ] Automated UI testing framework
-- [ ] Property-based testing with `proptest`
-- [ ] Fuzzing for parser functions
-- [ ] Snapshot testing for UI components
-- [ ] Load testing with extreme directory sizes
-- [ ] Memory leak detection
-- [ ] Cross-version compatibility tests
+## Current Coverage Status
 
-## Resources
+| Metric | Value |
+|--------|-------|
+| Line Coverage | 57.33% |
+| Tests | 332 |
+| Pass Rate | 100% |
 
-- [Rust Testing Guide](https://doc.rust-lang.org/book/ch11-00-testing.html)
-- [GPUI Testing](https://github.com/zed-industries/zed/tree/main/crates/gpui)
-- [Cargo Nextest](https://nexte.st/)
-- [Tarpaulin Coverage](https://github.com/xd009642/tarpaulin)
-
----
-
-**Remember**: Good tests are the foundation of reliable software. Write tests for every new feature! 🧪
+See [coverage/README.md](coverage/README.md) for detailed breakdown.

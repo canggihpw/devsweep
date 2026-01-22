@@ -1,39 +1,15 @@
 use devsweep::app::DevSweep;
 use devsweep::assets::Assets;
+use devsweep::single_instance::{cleanup_socket, get_socket_path, try_activate_existing_instance};
 use gpui::*;
-use std::fs;
 use std::io::{Read, Write};
-use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::PathBuf;
-
-fn get_socket_path() -> PathBuf {
-    let mut path = dirs::runtime_dir()
-        .or_else(dirs::cache_dir)
-        .unwrap_or_else(|| PathBuf::from("/tmp"));
-    path.push("devsweep.sock");
-    path
-}
-
-fn try_activate_existing_instance() -> bool {
-    let socket_path = get_socket_path();
-
-    if let Ok(mut stream) = UnixStream::connect(&socket_path) {
-        // Send activation message to existing instance
-        let _ = stream.write_all(b"activate");
-        let mut response = [0u8; 2];
-        if stream.read_exact(&mut response).is_ok() && &response == b"ok" {
-            return true; // Existing instance will handle activation
-        }
-    }
-
-    false
-}
+use std::os::unix::net::UnixListener;
 
 fn setup_single_instance_listener(cx: &mut AppContext) {
     let socket_path = get_socket_path();
 
     // Remove stale socket file if it exists
-    let _ = fs::remove_file(&socket_path);
+    let _ = std::fs::remove_file(&socket_path);
 
     // Create Unix socket listener
     if let Ok(listener) = UnixListener::bind(&socket_path) {
@@ -96,7 +72,7 @@ fn main() {
     });
 
     // Cleanup socket on exit
-    let _ = fs::remove_file(get_socket_path());
+    cleanup_socket();
 }
 
 fn open_main_window(cx: &mut AppContext) {
