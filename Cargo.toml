@@ -1,6 +1,6 @@
 [package]
 name = "devsweep"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["DevSweep Contributors"]
 description = "A modern macOS desktop application that helps developers reclaim disk space by identifying and safely removing development tool caches and build artifacts"
