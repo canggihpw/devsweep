@@ -61,11 +61,8 @@ jobs:
           echo "Running tests with coverage instrumentation..."
           cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
           echo "✅ All tests passed!"
-
-      - name: Generate coverage summary
-        run: |
-          echo "📊 Coverage Summary:"
-          cargo llvm-cov --all-features --workspace --summary-only
+          echo ""
+          echo "📊 Coverage data saved to lcov.info"
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v4
