@@ -100,21 +100,24 @@ DevSweep provides:
 
 ## Project Status
 
-**Current Version**: 0.1.0
+**Current Version**: 0.2.0
 
 **Test Coverage**: 57.33% (332 tests, 100% pass rate)
 
-**Stability**: Alpha - Core functionality working, API may change
+**Stability**: Beta - Core functionality stable, comprehensive test coverage
 
 ### Completed Features
 - Core scanning functionality
-- Quarantine system
-- Modern GPUI-based UI
-- Support for major development tools
-- Light/dark theme toggle
+- Quarantine system with restore capabilities
+- Modern GPUI-based UI with tab navigation
+- Support for 16+ development tool categories
+- Light/dark theme toggle with theme-aware icons
 - Single-instance app behavior
-- Embedded app icons
-- Comprehensive test suite
+- Embedded app icons (light/dark variants)
+- Comprehensive test suite (332 tests, 57.33% coverage)
+- Scan caching for improved performance
+- CI/CD with automated testing and coverage reporting
+- Complete documentation (testing guide, Git workflow, coverage tracking)
 
 ### In Progress
 - Additional checker improvements

@@ -48,7 +48,7 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 - **Scrollable Interface**: Easy navigation through all settings
 
 ### ℹ️ About Tab
-- **App Information**: Version 0.1.0, description, and credits
+- **App Information**: Version 0.2.0, description, and credits
 - **Feature List**: Complete overview of capabilities
 - **Technology Stack**: Built with Rust + GPUI
 - **Clean Design**: Centered layout with app logo
@@ -119,7 +119,7 @@ cargo build --release
 
 # This creates:
 # - DevSweep.app (macOS app bundle)
-# - DevSweep-0.1.0.dmg (ready to distribute)
+# - DevSweep-0.2.0.dmg (ready to distribute)
 ```
 
 ## Usage
@@ -486,16 +486,16 @@ codesign --force --deep \
 
 # Sign DMG
 codesign --sign "Developer ID Application: Your Name (TEAM_ID)" \
-  "DevSweep-0.1.0.dmg"
+  "DevSweep-0.2.0.dmg"
 
 # Notarize (required for distribution)
-xcrun notarytool submit "DevSweep-0.1.0.dmg" \
+xcrun notarytool submit "DevSweep-0.2.0.dmg" \
   --apple-id "your@email.com" \
   --team-id "TEAM_ID" \
   --password "app-specific-password"
 
 # Staple notarization ticket
-xcrun stapler staple "DevSweep-0.1.0.dmg"
+xcrun stapler staple "DevSweep-0.2.0.dmg"
 ```
 
 ## Performance
