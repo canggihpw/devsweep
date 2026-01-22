@@ -1,263 +1,202 @@
 # Test Coverage Documentation
 
-## 📊 Current Status (Updated: January 2025)
+## Current Status
 
 | Metric | Value |
 |--------|-------|
-| **Current Coverage** | 34.76% |
-| **Target Coverage** | 60-70% |
-| **Tests Passing** | 213/213 (100%) |
-| **Status** | ✅ Phase 1 & 2 Complete |
+| **Coverage** | 35.87% |
+| **Tests** | 332 |
+| **Pass Rate** | 100% |
 
-### Recent Achievements 🎉
-
-- ✅ **Phase 1 Complete**: Added 96 tests for core modules
-- ✅ **Phase 2 Complete**: Added 60 structure tests for checkers
-- ✅ **Coverage Improved**: From ~30% to 34.76% (+4.76%)
-- ✅ **Test Count**: From 80 to 213 tests (+133 tests)
-
-## 📁 Documents in this Directory
-
-### Active Documents
-
-1. **[IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md)** - Original comprehensive plan
-   - ✅ Phase 1: Quick Wins (COMPLETE)
-   - ✅ Phase 2: Checker Coverage (COMPLETE)
-   - ⏳ Phase 3: Edge Cases (TODO)
-   - ⏳ Phase 4: Integration (TODO)
-
-2. **[PHASE1_COMPLETION.md](PHASE1_COMPLETION.md)** - Detailed completion report
-   - What was built (96 tests)
-   - Coverage results by module
-   - Lessons learned
-   - Next steps
-
-3. **[QUICK_CHECKLIST.md](QUICK_CHECKLIST.md)** - Progress tracking
-   - Updated with Phase 1 & 2 completion status
-   - Remaining tasks for Phase 3 & 4
-
-## 🏆 What's Been Completed
-
-### Phase 1: Core Module Tests ✅
-
-#### Backend Module (28 tests)
-- **Coverage**: 46.86% (+17%)
-- Real file cleanup with TempDir
-- Sequential operations
-- Error handling
-- Large datasets (100 items)
-
-#### Scan Cache Module (29 tests) 🌟
-- **Coverage**: 90.57% (+55%)
-- TTL expiration logic
-- Multiple category caching
-- Path tracking with real files
-- Config persistence
-
-#### Cleanup History Module (22 tests)
-- **Coverage**: 56.61% (+16%)
-- Restore from quarantine
-- Permanent deletion
-- Unicode filename support
-- Content preservation
-
-#### Node.js Checker (17 tests) 🌟
-- **Coverage**: 79.69% (+60%)
-- npm, yarn, pnpm cache structures
-- Scoped packages
-- Large project simulations
-
-### Phase 2: Checker Structure Tests ✅
-
-#### Docker Checker (16 tests)
-- Container cache structures
-- Image layers (20-layer simulation)
-- Build cache, volumes, overlay2
-
-#### Python Checker (21 tests)
-- `__pycache__` with multiple Python versions
-- pip cache (http & wheels)
-- virtualenv, poetry, conda, tox
-- 100-file large project simulation
-
-#### Xcode Checker (23 tests)
-- DerivedData structures
-- Archives with dSYMs
-- DeviceSupport (iOS, watchOS, tvOS)
-- Simulator devices
-
-## 📈 Coverage by Module
+## Coverage by Module
 
 ```
-Module                      Coverage    Status
-──────────────────────────────────────────────
-scan_cache.rs               90.57%      🌟 Excellent
-utils.rs                    97.17%      🌟 Excellent
-checkers/rust_cargo.rs      93.89%      🌟 Excellent
-checkers/homebrew.rs        81.01%      🌟 Excellent
-checkers/nodejs.rs          79.69%      🌟 Excellent
-checkers/general.rs         67.10%      ✅ Good
-cache_settings.rs           63.47%      ✅ Good
-types.rs                    60.38%      ✅ Good
-cleanup_history.rs          56.61%      ✅ Good
-checkers/browser.rs         54.55%      ✅ Good
-checkers/logs.rs            53.29%      ✅ Good
-backend.rs                  46.86%      ✅ Good
-checkers/xcode.rs           38.17%      ⚠️  Needs work
-checkers/db.rs              36.45%      ⚠️  Needs work
-checkers/python.rs          23.20%      ⚠️  Needs work
-checkers/docker.rs          11.76%      ⚠️  Needs work
+Module                      Coverage    Notes
+────────────────────────────────────────────────────────
+utils.rs                    97.17%      Fully tested
+checkers/rust_cargo.rs      93.89%      Fully tested
+scan_cache.rs               92.38%      Fully tested
+checkers/homebrew.rs        81.01%      Well tested
+checkers/nodejs.rs          79.69%      Well tested
+single_instance.rs          77.14%      Well tested
+checkers/general.rs         67.10%      Good coverage
+cleanup_history.rs          64.76%      Good coverage
+cache_settings.rs           63.47%      Good coverage
+types.rs                    60.38%      Good coverage
+checkers/browser.rs         54.55%      Adequate
+checkers/ide.rs             55.10%      Adequate
+checkers/logs.rs            53.29%      Adequate
+checkers/java.rs            50.70%      Adequate
+checkers/shell.rs           50.00%      Adequate
+backend.rs                  46.86%      Needs improvement
+checkers/xcode.rs           38.17%      Needs improvement
+checkers/go.rs              37.29%      Needs improvement
+checkers/db.rs              36.45%      Needs improvement
+checkers/python.rs          23.20%      Low coverage
+checkers/docker.rs          11.76%      Low coverage
 ```
 
-**5 modules** with 80%+ coverage  
-**7 modules** with 50%+ coverage
+**UI modules (0% coverage)**: `app/*`, `ui/*`, `main.rs`, `assets.rs` - These are excluded from coverage targets as they require GUI testing.
 
-## 🎯 Next Steps (Optional - Future Work)
+## Test Files
 
-### To Reach 50% Coverage
+| File | Tests | Description |
+|------|-------|-------------|
+| `test_backend.rs` | 28 | Backend operations, cleanup execution |
+| `test_scan_cache.rs` | 29 | Cache TTL, persistence, path tracking |
+| `test_cleanup_history.rs` | 22 | Quarantine, restore, history management |
+| `test_nodejs_checker.rs` | 17 | npm/yarn/pnpm cache structures |
+| `test_docker_checker.rs` | 16 | Docker cache structures |
+| `test_python_checker.rs` | 21 | Python cache structures |
+| `test_xcode_checker.rs` | 23 | Xcode DerivedData, archives |
+| `test_edge_cases.rs` | 41 | Symlinks, unicode, permissions |
+| `test_persistence.rs` | 35 | Corrupted data recovery |
+| `test_integration_workflows.rs` | 24 | End-to-end workflows |
+| `test_single_instance.rs` | 14 | Unix socket single-instance |
+| `test_checkers.rs` | 16 | Checker basic functionality |
+| `test_types.rs` | 13 | Type builders and structures |
+| `test_cache_settings.rs` | 3 | Cache settings |
+| `test_utils.rs` | 2 | Utility functions |
+| `performance_tests.rs` | 5 | Performance benchmarks |
 
-The structure tests from Phase 2 can be converted to integration tests:
+## How to Improve Coverage to 50%+
 
-1. **Use Docker/Python/Xcode structure tests**
-   - Call checker functions with mocked paths
-   - Verify detection logic works correctly
-   - Expected gain: +10-15%
+The current coverage is 35.21%. To reach 50%, focus on these high-impact areas:
 
-2. **Add Database checker tests**
-   - Currently 36.45% coverage
-   - Redis, PostgreSQL, MongoDB structures
-   - Expected gain: +2-3%
+### 1. Checker Functions with Mock Paths (Expected: +8-12%)
 
-### To Reach 60% Coverage
+The checker modules have structure tests but don't call the actual checker functions with mock directories. Adding these tests would significantly improve coverage.
 
-3. **Edge case tests** (from Phase 3 plan)
-   - Symlinks, permissions, long paths
-   - Expected gain: +5-8%
+**Target modules:**
+- `checkers/docker.rs` (11.76% -> 60%+)
+- `checkers/python.rs` (23.20% -> 60%+)
+- `checkers/db.rs` (36.45% -> 60%+)
 
-4. **Integration tests** (from Phase 4 plan)
-   - Full scan → cleanup → restore workflows
-   - Expected gain: +5-10%
-
-## 📊 Checking Coverage
-
-### Generate HTML Report
-```bash
-cargo llvm-cov --html --open
-```
-
-### Get Text Summary
-```bash
-cargo llvm-cov --summary-only
-```
-
-### Check Specific File
-```bash
-cargo llvm-cov --text | grep backend.rs
-```
-
-### View on Codecov
-After PR is merged, coverage will be visible at:
-- https://codecov.io/gh/canggihpw/devsweep
-
-## 💡 Test Quality Highlights
-
-### Best Practices Applied ✅
-
-- **65+ tests** use real file system (TempDir)
-- **Zero hardcoded paths** - all portable
-- **RAII cleanup** - automatic resource cleanup
-- **Comprehensive edge cases**: unicode, zero-size, large datasets
-- **Both success and failure paths** tested
-
-### Test Examples
-
-#### Real File System Testing
+**Example approach:**
 ```rust
+use devsweep::checkers::docker::check_docker;
+use tempfile::TempDir;
+
 #[test]
-fn test_execute_cleanup_with_real_temp_files() {
+fn test_check_docker_with_mock_cache() {
     let temp = TempDir::new().unwrap();
-    let test_file = temp.path().join("cache.txt");
-    fs::write(&test_file, b"data").unwrap();
     
-    let item = CleanupItem::new("cache", 4, "4 B")
-        .with_path(test_file.clone());
+    // Create mock Docker directory structure
+    let docker_dir = temp.path().join(".docker");
+    fs::create_dir_all(docker_dir.join("buildx")).unwrap();
+    fs::write(docker_dir.join("buildx/cache.db"), b"data").unwrap();
     
-    let result = backend.execute_cleanup(&item);
-    // Automatic cleanup when temp goes out of scope
+    // Set HOME to temp dir and call checker
+    // Verify results contain expected items
 }
 ```
 
-#### TTL Testing
+**Why this helps:** The checker tests currently create directory structures but don't call the actual `check_*` functions because they look at system paths. Using environment variable overrides or path injection would test the real detection logic.
+
+### 2. Backend Parallel Scanning (Expected: +3-5%)
+
+The `backend.rs` module has untested parallel scanning code paths.
+
+**Target functions:**
+- `scan_categories_parallel()` - parallel execution paths
+- Error handling in parallel scans
+- Category aggregation logic
+
+**Example:**
 ```rust
 #[test]
-fn test_cache_ttl_expiration() {
-    let mut cache = ScanCache::new();
-    cache.set_ttl("test", 1); // 1 second
-    cache.update("test", result);
-    
-    assert!(!cache.needs_rescan("test")); // Fresh
-    thread::sleep(Duration::from_secs(2));
-    assert!(cache.needs_rescan("test"));  // Expired
+fn test_parallel_scan_with_failures() {
+    // Mock a checker that fails
+    // Verify other checkers still complete
+    // Verify error is captured but doesn't crash
 }
 ```
 
-## 🏆 Achievement Summary
+### 3. Database Checker (Expected: +2-3%)
 
-### Tests Added
-- **Phase 1**: 96 tests (backend, scan_cache, cleanup_history, nodejs)
-- **Phase 2**: 60 tests (docker, python, xcode structures)
-- **Total**: 133 new tests
+`checkers/db.rs` at 36.45% has several untested paths for Redis, PostgreSQL, and MongoDB detection.
 
-### Coverage Improved
-- **Before**: ~30% (80 tests)
-- **After**: 34.76% (213 tests)
-- **Gain**: +4.76%
+**Create `tests/test_db_checker.rs`:**
+```rust
+#[test]
+fn test_redis_dump_detection() {
+    let temp = TempDir::new().unwrap();
+    fs::write(temp.path().join("dump.rdb"), b"REDIS...").unwrap();
+    // Test detection
+}
 
-### High Coverage Modules
-- 🌟 5 modules with 80%+ coverage
-- ✅ 7 modules with 50%+ coverage
-- 💪 Solid foundation for future improvements
+#[test]
+fn test_postgres_data_detection() {
+    let temp = TempDir::new().unwrap();
+    let pg_data = temp.path().join("postgres/data");
+    fs::create_dir_all(&pg_data).unwrap();
+    // Test detection
+}
+```
 
-## 📝 Files Overview
+### 4. Xcode Checker Improvements (Expected: +2-3%)
 
-### Test Files Created
+`checkers/xcode.rs` at 38.17% - the existing structure tests don't exercise the actual detection code.
 
-**Phase 1:**
-- `tests/test_scan_cache.rs` (29 tests)
-- `tests/test_nodejs_checker.rs` (17 tests)
-- Modified: `tests/test_backend.rs` (+20 tests)
-- Modified: `tests/test_cleanup_history.rs` (+16 tests)
+**Improvements needed:**
+- Call `check_xcode()` with mocked paths
+- Test simulator device detection
+- Test archive parsing
 
-**Phase 2:**
-- `tests/test_docker_checker.rs` (16 tests)
-- `tests/test_python_checker.rs` (21 tests)
-- `tests/test_xcode_checker.rs` (23 tests)
+### 5. Go Checker (Expected: +1-2%)
 
-### Documentation
-- `docs/coverage/PHASE1_COMPLETION.md` - Detailed completion report
-- `docs/coverage/QUICK_CHECKLIST.md` - Updated checklist
-- `docs/coverage/IMPROVEMENT_PLAN.md` - Original plan
+`checkers/go.rs` at 37.29% is a small module. Adding 2-3 tests would bring it to 70%+.
 
-## ✅ Current State
+```rust
+#[test]
+fn test_go_module_cache_detection() {
+    let temp = TempDir::new().unwrap();
+    let go_path = temp.path().join("go/pkg/mod");
+    fs::create_dir_all(&go_path).unwrap();
+    // Add mock module cache files
+}
+```
 
-The test suite now provides:
-- ✅ Solid coverage of critical business logic
-- ✅ Realistic test data with TempDir
-- ✅ Comprehensive edge case testing
-- ✅ Foundation for future integration tests
-- ✅ 100% test pass rate
-- ✅ No flaky tests
+## Coverage Commands
 
-## 🔗 Related Documentation
+```bash
+# Generate HTML report
+cargo llvm-cov --html --open
 
-- [Phase 1 Completion Report](PHASE1_COMPLETION.md) - Detailed results
-- [Improvement Plan](IMPROVEMENT_PLAN.md) - Full original plan
-- [Quick Checklist](QUICK_CHECKLIST.md) - Task tracking
-- [Main Testing Guide](../TESTING.md) - Overall strategy
+# Text summary
+cargo llvm-cov --summary-only
 
----
+# Check specific file
+cargo llvm-cov --text | grep backend.rs
 
-**Status**: Phase 1 & 2 complete ✅  
-**Coverage**: 34.76% (from 30%)  
-**Tests**: 213 (from 80)  
-**Next**: Optional Phase 3 & 4 for 50%+ coverage
+# Run specific test file
+cargo test --test test_backend
+```
+
+## Why Coverage is Limited at ~35%
+
+1. **UI Code (0%)**: The `app/` and `ui/` modules are GUI code that requires integration testing with a display, which is excluded from unit test coverage.
+
+2. **System-Dependent Checkers**: Many checkers look at system paths like `~/.docker`, `~/.cargo`, `/usr/local/Cellar`. Testing these requires either:
+   - Environment variable overrides (not always supported)
+   - Path injection (requires code changes)
+   - Integration tests with real system state
+
+3. **main.rs (0%)**: The application entry point requires running the full GUI.
+
+## Realistic Coverage Targets
+
+| Target | Achievable? | Effort |
+|--------|-------------|--------|
+| 40% | Yes | Low - Add checker function tests |
+| 50% | Yes | Medium - Add DB, Go, Xcode tests |
+| 60% | Difficult | High - Requires code refactoring for testability |
+| 70%+ | Not practical | Would need to exclude UI from total |
+
+## Test Quality Highlights
+
+- 100+ tests use real file system (TempDir)
+- Zero hardcoded paths
+- Comprehensive edge cases: unicode, symlinks, permissions
+- Both success and failure paths tested
+- No flaky tests

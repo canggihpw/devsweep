@@ -10,6 +10,7 @@ pub mod cache_settings;
 pub mod checkers;
 pub mod cleanup_history;
 pub mod scan_cache;
+pub mod single_instance;
 pub mod types;
 pub mod ui;
 pub mod utils;
