@@ -126,18 +126,60 @@ The current version is `0.1.0`, indicating initial development phase:
 
 ## Release Process
 
-### 1. Version Decision
+DevSweep uses **GitHub Actions workflows** to automate the release process. The workflows are located in `.github/workflows/`:
+
+- **`ci.yml`** - Runs on pull requests (formatting, linting, tests)
+- **`coverage.yml`** - Generates test coverage reports
+- **`release.yml`** - Automated release build and distribution
+
+### Automated Release Workflow
+
+The release workflow (`.github/workflows/release.yml`) automatically:
+
+1. **Triggers** when you push a tag matching `v*.*.*` (e.g., `v1.2.0`)
+2. **Extracts changelog** from `CHANGELOG.md` for that version
+3. **Creates GitHub Release** with changelog as description
+4. **Builds release binary** for macOS
+5. **Creates app bundle** using `scripts/create-app-bundle.sh`
+6. **Generates DMG installer** (e.g., `DevSweep-1.2.0.dmg`)
+7. **Uploads assets** to the release:
+   - DMG installer
+   - Raw binary
+   - Checksums file
+8. **Marks as pre-release** if tag contains `alpha`, `beta`, or `rc`
+
+### Step-by-Step Release Process
+
+#### 1. Version Decision
 
 Before creating a release, determine the version number:
 
 1. Review all changes since the last release
 2. Identify the highest level of change (MAJOR, MINOR, or PATCH)
 3. Determine if a pre-release version is needed
-4. Update version in `Cargo.toml`
 
-### 2. Update CHANGELOG
+#### 2. Create Release Branch
 
-Update `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/) format:
+Since `main` branch is protected, create a release branch:
+
+```bash
+# Create release branch from main (or current development branch)
+git checkout -b release/v1.2.0
+
+# Make your version updates
+```
+
+#### 3. Update Version Files
+
+Update the following files on the release branch:
+
+**`Cargo.toml`:**
+```toml
+[package]
+version = "1.2.0"
+```
+
+**`CHANGELOG.md`** following [Keep a Changelog](https://keepachangelog.com/) format:
 
 ```markdown
 ## [1.2.0] - 2024-01-15
@@ -154,33 +196,94 @@ Update `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com/) 
 - Corrected size calculation for symlinks
 ```
 
-### 3. Create Git Tag
+**Important**: The release workflow extracts changelog content between `## [VERSION]` headers, so proper formatting is critical.
 
-Create an annotated tag for the release:
+**`README.md`:**
+- Update version references (e.g., DMG filename examples)
+- Update "About Tab" version mention
+
+**`docs/PROJECT_SUMMARY.md`:**
+- Update "Current Version"
+- Update "Completed Features" if needed
+
+#### 4. Commit and Push Release Branch
 
 ```bash
+git add Cargo.toml CHANGELOG.md README.md docs/PROJECT_SUMMARY.md
+git commit -m "chore: release version 1.2.0"
+git push -u origin release/v1.2.0
+```
+
+#### 5. Create Pull Request
+
+1. Go to GitHub and create a PR from `release/v1.2.0` to `main`
+2. Use the PR template to document changes
+3. Review and get approval
+4. Merge the PR
+
+#### 6. Create and Push Git Tag
+
+After the PR is merged to `main`:
+
+```bash
+# Switch to main and pull latest
+git checkout main
+git pull origin main
+
+# Create annotated tag
 git tag -a v1.2.0 -m "Release version 1.2.0"
+
+# Push the tag (this triggers the release workflow)
 git push origin v1.2.0
 ```
 
-### 4. GitHub Release
+#### 7. Monitor Automated Release
 
-Create a GitHub release:
+1. Go to **Actions** tab on GitHub
+2. Watch the **Release** workflow run
+3. The workflow will:
+   - Build the macOS app
+   - Create the DMG installer
+   - Create a GitHub Release
+   - Upload all assets
 
-1. Go to repository → Releases → Draft a new release
-2. Choose the tag (e.g., `v1.2.0`)
-3. Release title: `Version 1.2.0` or `v1.2.0 - Feature Name`
-4. Description: Copy relevant section from CHANGELOG.md
-5. Attach compiled binaries (`.app`, `.dmg`)
-6. Mark as pre-release if applicable
+#### 8. Verify Release
 
-### 5. Post-Release
+Once the workflow completes:
 
-After creating a release:
+1. Go to **Releases** tab
+2. Verify the new release appears
+3. Check that all assets are attached:
+   - `DevSweep-1.2.0.dmg`
+   - `devsweep-macos-1.2.0` (binary)
+   - `checksums.txt`
+4. Verify the changelog content is correct
+5. Test download and installation
 
-1. Increment version in `Cargo.toml` to next development version
-2. Add new section in CHANGELOG.md for unreleased changes
-3. Update README.md if installation instructions changed
+#### 9. Post-Release (Optional)
+
+If continuing development immediately:
+
+1. Create new `[Unreleased]` section in `CHANGELOG.md`
+2. Consider bumping to next development version (e.g., `1.3.0-dev`)
+
+### Manual Release (If Workflow Fails)
+
+If the automated workflow fails, you can create a release manually:
+
+1. Build locally:
+   ```bash
+   cargo build --release
+   ./scripts/create-app-bundle.sh
+   ```
+
+2. Go to repository → Releases → Draft a new release
+3. Choose the tag (e.g., `v1.2.0`)
+4. Release title: `Release 1.2.0`
+5. Description: Copy relevant section from CHANGELOG.md
+6. Attach the DMG and checksums
+7. Mark as pre-release if applicable
+8. Publish release
 
 ## Version Numbering Examples
 
@@ -240,40 +343,74 @@ This version is automatically available in the code and used for:
 
 ## Branching Strategy
 
-- `main` - Stable release branch, always production-ready
-- `develop` - Development branch for next release
-- `feature/*` - Feature branches
-- `release/*` - Release preparation branches
-- `hotfix/*` - Urgent fixes for production
+DevSweep uses **GitHub Flow** - a simplified branching model with a single main branch:
+
+- `main` - Stable production branch, protected from direct pushes
+- `feature/*` - Feature branches for new functionality
+- `release/*` - Release preparation branches (version updates, changelog)
+- `hotfix/*` - Urgent fixes for production issues
+
+### Why GitHub Flow?
+
+- Simpler than Git Flow (no separate `develop` branch)
+- Works well with automated CI/CD and GitHub Actions
+- Main branch always reflects production state
+- All changes go through Pull Request review
 
 ### Release Branch Workflow
 
-1. Create release branch from `develop`:
-   ```bash
-   git checkout -b release/1.2.0 develop
-   ```
+Since `main` is protected and requires PR review:
 
-2. Update version numbers and CHANGELOG
-
-3. Test and fix bugs (only bug fixes, no new features)
-
-4. Merge to `main` and tag:
+1. Create release branch from `main`:
    ```bash
    git checkout main
-   git merge --no-ff release/1.2.0
+   git pull origin main
+   git checkout -b release/v1.2.0
+   ```
+
+2. Update version numbers, CHANGELOG, and documentation
+
+3. Commit and push:
+   ```bash
+   git add Cargo.toml CHANGELOG.md README.md docs/PROJECT_SUMMARY.md
+   git commit -m "chore: release version 1.2.0"
+   git push -u origin release/v1.2.0
+   ```
+
+4. Create Pull Request to `main` and get review approval
+
+5. Merge PR to `main`
+
+6. Create and push tag (triggers automated release):
+   ```bash
+   git checkout main
+   git pull origin main
    git tag -a v1.2.0 -m "Release 1.2.0"
+   git push origin v1.2.0
    ```
 
-5. Merge back to `develop`:
+7. GitHub Actions workflow automatically builds and publishes release
+
+8. Delete release branch:
    ```bash
-   git checkout develop
-   git merge --no-ff release/1.2.0
+   git branch -d release/v1.2.0
+   git push origin --delete release/v1.2.0
    ```
 
-6. Delete release branch:
+### Feature Branch Workflow
+
+1. Create feature branch from `main`:
    ```bash
-   git branch -d release/1.2.0
+   git checkout -b feature/add-new-checker
    ```
+
+2. Develop and commit changes
+
+3. Push and create Pull Request to `main`
+
+4. After PR review and CI passes, merge to `main`
+
+For more details, see [GIT_WORKFLOW.md](GIT_WORKFLOW.md).
 
 ## Commit Messages
 
