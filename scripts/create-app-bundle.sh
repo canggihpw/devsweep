@@ -8,7 +8,12 @@ set -e  # Exit on error
 APP_NAME="DevSweep"
 BINARY_NAME="devsweep"
 BUNDLE_ID="com.devsweep.app"
-VERSION="0.1.0"
+# Extract version from Cargo.toml
+VERSION=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+if [ -z "$VERSION" ]; then
+    echo "❌ Error: Could not extract version from Cargo.toml"
+    exit 1
+fi
 MIN_MACOS="11.0"
 
 echo "╔════════════════════════════════════════════════════════════╗"
