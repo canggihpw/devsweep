@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated CI workflow to run only on pull requests for efficiency
 - Improved documentation to reflect current implementation
 - Optimized workflows and removed redundant jobs
+- Combined test and coverage workflows into single CI run for faster execution
 
 ### Fixed
 - Clippy warnings and linting errors throughout codebase
@@ -41,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Obsolete planning documents (IMPROVEMENT_PLAN.md, PHASE1_COMPLETION.md, etc.)
 - Redundant test jobs from CI workflow
+- Separate coverage.yml workflow (now integrated into ci.yml)
 
 ## [0.1.0] - 2026-01-21
 

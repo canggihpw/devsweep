@@ -128,8 +128,7 @@ The current version is `0.1.0`, indicating initial development phase:
 
 DevSweep uses **GitHub Actions workflows** to automate the release process. The workflows are located in `.github/workflows/`:
 
-- **`ci.yml`** - Runs on pull requests (formatting, linting, tests)
-- **`coverage.yml`** - Generates test coverage reports
+- **`ci.yml`** - Runs on pull requests (formatting, linting, tests with coverage)
 - **`release.yml`** - Automated release build and distribution
 
 ### Automated Release Workflow

@@ -39,3 +39,46 @@ jobs:
 
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
+
+  test-and-coverage:
+    name: Tests & Coverage
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run tests with coverage
+        run: |
+          echo "Running tests with coverage instrumentation..."
+          cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+          echo "✅ All tests passed!"
+
+      - name: Generate coverage summary
+        run: |
+          echo "📊 Coverage Summary:"
+          cargo llvm-cov --all-features --workspace --summary-only
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./lcov.info
+          fail_ci_if_error: false
+          verbose: true
+          flags: unittests
+          name: codecov-devsweep
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lcov.info
