@@ -1,10 +1,13 @@
 use crate::app::state::{
     CacheTTLSetting, CategoryItem, CleanupItemData, DevSweep, QuarantineItemData,
-    QuarantineRecordData,
+    QuarantineRecordData, SuperCategoryItem, SuperCategoryType,
 };
+use crate::custom_paths::CustomPathsConfig;
 use crate::ui::sidebar::Tab;
+use crate::update_checker;
 use crate::utils;
 use gpui::*;
+use std::path::PathBuf;
 
 impl DevSweep {
     pub fn refresh_quarantine(&mut self) {
@@ -81,6 +84,69 @@ impl DevSweep {
         self.cache_ttls.sort_by(|a, b| a.category.cmp(&b.category));
     }
 
+    /// Increase TTL for a category
+    pub fn increase_ttl(&mut self, category: &str, _cx: &mut ViewContext<Self>) {
+        // Find current TTL
+        if let Some(setting) = self
+            .cache_ttls
+            .iter()
+            .find(|s| s.category.as_ref() == category)
+        {
+            let current_minutes = setting.ttl_minutes;
+            // Define step increments: 0 -> 1 -> 5 -> 10 -> 30 -> 60 -> 120 -> 360 -> 720 -> 1440
+            let new_minutes = match current_minutes {
+                0 => 1,
+                1 => 5,
+                2..=5 => 10,
+                6..=10 => 30,
+                11..=30 => 60,
+                31..=60 => 120,
+                61..=120 => 360,
+                121..=360 => 720,
+                361..=720 => 1440,
+                _ => current_minutes, // Max reached
+            };
+
+            let new_seconds = (new_minutes * 60) as u64;
+            let mut backend = self.backend.lock().unwrap();
+            backend.set_cache_ttl(category, new_seconds);
+            drop(backend);
+            self.refresh_cache_ttls();
+        }
+    }
+
+    /// Decrease TTL for a category
+    pub fn decrease_ttl(&mut self, category: &str, _cx: &mut ViewContext<Self>) {
+        // Find current TTL
+        if let Some(setting) = self
+            .cache_ttls
+            .iter()
+            .find(|s| s.category.as_ref() == category)
+        {
+            let current_minutes = setting.ttl_minutes;
+            // Define step decrements: 1440 -> 720 -> 360 -> 120 -> 60 -> 30 -> 10 -> 5 -> 1 -> 0
+            let new_minutes = match current_minutes {
+                1..=1 => 0,
+                2..=5 => 1,
+                6..=10 => 5,
+                11..=30 => 10,
+                31..=60 => 30,
+                61..=120 => 60,
+                121..=360 => 120,
+                361..=720 => 360,
+                721..=1440 => 720,
+                _ if current_minutes > 1440 => 1440,
+                _ => 0, // Already at min
+            };
+
+            let new_seconds = (new_minutes * 60) as u64;
+            let mut backend = self.backend.lock().unwrap();
+            backend.set_cache_ttl(category, new_seconds);
+            drop(backend);
+            self.refresh_cache_ttls();
+        }
+    }
+
     pub fn set_tab(&mut self, tab: Tab) {
         self.active_tab = tab;
         if tab == Tab::Quarantine {
@@ -128,7 +194,7 @@ impl DevSweep {
                 let _ = this.update(cx, |this, cx| {
                     this.category_data = categories.clone();
 
-                    // Convert to UI models
+                    // Convert to UI models with super category assignment
                     this.categories = categories
                         .iter()
                         .map(|c| CategoryItem {
@@ -138,6 +204,7 @@ impl DevSweep {
                             item_count: c.item_count,
                             checked: false,
                             expanded: false,
+                            super_category: SuperCategoryType::from_category_name(&c.name),
                         })
                         .collect();
 
@@ -164,6 +231,9 @@ impl DevSweep {
                             });
                         }
                     }
+
+                    // Build super categories (only non-empty ones)
+                    this.build_super_categories();
 
                     this.total_reclaimable = utils::format_size(total).into();
                     this.is_scanning = false;
@@ -305,6 +375,97 @@ impl DevSweep {
         let total_size: u64 = self.selected_items.iter().map(|si| si.size).sum();
         self.selected_items_count = self.selected_items.len() as i32;
         self.selected_items_size = utils::format_size(total_size).into();
+
+        // Update super category checked states
+        self.update_super_category_states();
+    }
+
+    /// Build super categories from the current categories (filters out empty ones)
+    pub fn build_super_categories(&mut self) {
+        self.super_categories.clear();
+
+        for super_type in SuperCategoryType::all() {
+            // Find all category indices that belong to this super category
+            let category_indices: Vec<usize> = self
+                .categories
+                .iter()
+                .enumerate()
+                .filter(|(_, cat)| cat.super_category == super_type && cat.item_count > 0)
+                .map(|(idx, _)| idx)
+                .collect();
+
+            // Skip if no non-empty categories in this super category
+            if category_indices.is_empty() {
+                continue;
+            }
+
+            // Calculate totals
+            let total_size: u64 = category_indices
+                .iter()
+                .map(|&idx| self.categories[idx].total_size)
+                .sum();
+            let item_count: i32 = category_indices
+                .iter()
+                .map(|&idx| self.categories[idx].item_count)
+                .sum();
+
+            // Check if all categories in this super category are checked
+            let all_checked = category_indices
+                .iter()
+                .all(|&idx| self.categories[idx].checked);
+
+            self.super_categories.push(SuperCategoryItem {
+                super_type,
+                name: super_type.name().into(),
+                icon: super_type.icon().into(),
+                total_size,
+                size_str: utils::format_size(total_size).into(),
+                item_count,
+                category_count: category_indices.len() as i32,
+                checked: all_checked,
+                expanded: false,
+                category_indices,
+            });
+        }
+    }
+
+    /// Update super category checked states based on their child categories
+    fn update_super_category_states(&mut self) {
+        for super_cat in &mut self.super_categories {
+            let all_checked = super_cat
+                .category_indices
+                .iter()
+                .all(|&idx| self.categories.get(idx).map(|c| c.checked).unwrap_or(false));
+            super_cat.checked = all_checked && !super_cat.category_indices.is_empty();
+        }
+    }
+
+    /// Toggle a super category's expansion state
+    pub fn toggle_super_category_expand(&mut self, super_idx: usize, _cx: &mut ViewContext<Self>) {
+        if super_idx < self.super_categories.len() {
+            self.super_categories[super_idx].expanded = !self.super_categories[super_idx].expanded;
+        }
+    }
+
+    /// Toggle all categories within a super category
+    pub fn toggle_super_category(&mut self, super_idx: usize, cx: &mut ViewContext<Self>) {
+        if super_idx >= self.super_categories.len() {
+            return;
+        }
+
+        let checked = !self.super_categories[super_idx].checked;
+        self.super_categories[super_idx].checked = checked;
+
+        // Toggle all child categories
+        let category_indices = self.super_categories[super_idx].category_indices.clone();
+        for cat_idx in category_indices {
+            if cat_idx < self.categories.len() {
+                // Only toggle if the state is different
+                if self.categories[cat_idx].checked != checked {
+                    self.toggle_category(cat_idx, cx);
+                }
+            }
+        }
     }
 
     pub fn execute_cleanup(&mut self, cx: &mut ViewContext<Self>) {
@@ -469,5 +630,208 @@ impl DevSweep {
         backend.reset_cache_config();
         drop(backend);
         self.refresh_cache_ttls();
+    }
+
+    /// Check for updates from GitHub releases
+    pub fn check_for_updates(&mut self, cx: &mut ViewContext<Self>) {
+        // Don't check if already checking
+        if self.is_checking_update {
+            return;
+        }
+
+        self.is_checking_update = true;
+        self.update_error = None;
+        cx.notify();
+
+        cx.spawn(|this, mut cx| async move {
+            // Run blocking HTTP call in a separate thread
+            let result = std::thread::spawn(update_checker::fetch_latest_release)
+                .join()
+                .unwrap_or_else(|_| {
+                    Err(update_checker::UpdateError::NetworkError(
+                        "Thread panic".to_string(),
+                    ))
+                });
+
+            let _ = cx.update(|cx| {
+                let _ = this.update(cx, |this, cx| {
+                    this.is_checking_update = false;
+                    this.update_check_completed = true;
+
+                    match result {
+                        Ok(info) => {
+                            let current = update_checker::current_version();
+                            if update_checker::is_update_available(current, &info.version) {
+                                this.update_info = Some(info);
+                            } else {
+                                this.update_info = None; // Already up to date
+                            }
+                            this.update_error = None;
+                        }
+                        Err(e) => {
+                            this.update_info = None;
+                            this.update_error = Some(e.to_string());
+                        }
+                    }
+                    cx.notify();
+                });
+            });
+        })
+        .detach();
+    }
+
+    /// Open the GitHub release page in the default browser
+    pub fn open_release_page(&self) {
+        if let Some(ref info) = self.update_info {
+            let _ = std::process::Command::new("open")
+                .arg(&info.release_url)
+                .spawn();
+        }
+    }
+
+    /// Open the download URL in the default browser
+    pub fn download_update(&self) {
+        if let Some(ref info) = self.update_info {
+            if let Some(ref url) = info.download_url {
+                let _ = std::process::Command::new("open").arg(url).spawn();
+            } else {
+                // Fallback to release page if no DMG available
+                self.open_release_page();
+            }
+        }
+    }
+
+    // ==================== Custom Paths Actions ====================
+
+    /// Refresh custom paths from config
+    pub fn refresh_custom_paths(&mut self) {
+        self.custom_paths = CustomPathsConfig::load().paths;
+    }
+
+    /// Add a new custom path
+    pub fn add_custom_path(&mut self, cx: &mut ViewContext<Self>) {
+        let path_str = self.new_custom_path_input.trim();
+        let label = self.new_custom_path_label.trim();
+
+        if path_str.is_empty() {
+            self.status_text = "Please enter a path".into();
+            cx.notify();
+            return;
+        }
+
+        let path = PathBuf::from(path_str);
+
+        // Use path name as label if not provided
+        let label = if label.is_empty() {
+            path.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| "Custom Path".to_string())
+        } else {
+            label.to_string()
+        };
+
+        let mut config = CustomPathsConfig::load();
+        match config.add_path(path, label) {
+            Ok(_) => {
+                self.status_text = "Custom path added".into();
+                self.new_custom_path_input.clear();
+                self.new_custom_path_label.clear();
+                self.refresh_custom_paths();
+            }
+            Err(e) => {
+                self.status_text = format!("Error: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Remove a custom path by index
+    pub fn remove_custom_path(&mut self, index: usize, cx: &mut ViewContext<Self>) {
+        let mut config = CustomPathsConfig::load();
+        match config.remove_path(index) {
+            Ok(_) => {
+                self.status_text = "Custom path removed".into();
+                self.refresh_custom_paths();
+            }
+            Err(e) => {
+                self.status_text = format!("Error: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Toggle a custom path's enabled status
+    pub fn toggle_custom_path(&mut self, index: usize, cx: &mut ViewContext<Self>) {
+        let mut config = CustomPathsConfig::load();
+        match config.toggle_path(index) {
+            Ok(_) => {
+                self.refresh_custom_paths();
+            }
+            Err(e) => {
+                self.status_text = format!("Error: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Open folder picker dialog and add selected path
+    pub fn browse_for_custom_path(&mut self, cx: &mut ViewContext<Self>) {
+        // Use macOS open dialog via shell command
+        cx.spawn(|this, mut cx| async move {
+            let output = std::process::Command::new("osascript")
+                .args([
+                    "-e",
+                    r#"POSIX path of (choose folder with prompt "Select a folder to scan")"#,
+                ])
+                .output();
+
+            if let Ok(output) = output {
+                if output.status.success() {
+                    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+                    let _ = cx.update(|cx| {
+                        let _ = this.update(cx, |this, cx| {
+                            this.new_custom_path_input = path;
+                            cx.notify();
+                        });
+                    });
+                }
+            }
+        })
+        .detach();
+    }
+
+    /// Open text input dialog for manually entering a path
+    pub fn type_custom_path(&mut self, cx: &mut ViewContext<Self>) {
+        // Use macOS text input dialog via osascript
+        cx.spawn(|this, mut cx| async move {
+            let output = std::process::Command::new("osascript")
+                .args([
+                    "-e",
+                    r#"text returned of (display dialog "Enter the full path to the folder:" default answer "~/Projects" with title "Add Custom Path")"#,
+                ])
+                .output();
+
+            if let Ok(output) = output {
+                if output.status.success() {
+                    let mut path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+                    // Expand ~ to home directory
+                    if path.starts_with("~/") {
+                        if let Ok(home) = std::env::var("HOME") {
+                            path = path.replacen("~", &home, 1);
+                        }
+                    }
+
+                    let _ = cx.update(|cx| {
+                        let _ = this.update(cx, |this, cx| {
+                            this.new_custom_path_input = path;
+                            cx.notify();
+                        });
+                    });
+                }
+            }
+        })
+        .detach();
     }
 }

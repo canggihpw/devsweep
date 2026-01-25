@@ -2,6 +2,7 @@ use crate::app::state::DevSweep;
 use crate::assets::Assets;
 use crate::ui::sidebar::Tab;
 use crate::ui::Theme;
+use crate::update_checker;
 use gpui::*;
 
 impl Render for DevSweep {
@@ -25,7 +26,7 @@ impl Render for DevSweep {
                         Tab::Scan => self.render_scan_tab(cx),
                         Tab::Quarantine => self.render_quarantine_tab(cx),
                         Tab::Settings => self.render_settings_tab(cx),
-                        Tab::About => self.render_about_tab(),
+                        Tab::About => self.render_about_tab(cx),
                     }),
             )
     }
@@ -44,7 +45,7 @@ impl DevSweep {
             .border_color(Theme::surface0(self.theme_mode))
             .flex()
             .flex_col()
-            // Logo and title (side by side)
+            // Logo, title, and version info
             .child(
                 div()
                     .w_full()
@@ -68,10 +69,17 @@ impl DevSweep {
                     )
                     .child(
                         div()
-                            .text_xl()
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(Theme::text(self.theme_mode))
-                            .child("DevSweep"),
+                            .flex()
+                            .flex_col()
+                            .gap_0()
+                            .child(
+                                div()
+                                    .text_xl()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(Theme::text(self.theme_mode))
+                                    .child("DevSweep"),
+                            )
+                            .child(self.render_version_indicator(cx)),
                     ),
             )
             // Navigation items
@@ -211,5 +219,68 @@ impl DevSweep {
                     })
                     .child(tab.label()),
             )
+    }
+
+    /// Renders the version indicator below the app name
+    /// Shows current version, and update availability status
+    fn render_version_indicator(&self, cx: &mut ViewContext<Self>) -> AnyElement {
+        let theme = self.theme_mode;
+        let current_version = update_checker::current_version();
+
+        if self.is_checking_update {
+            // Checking for updates - show version with subtle indicator
+            div()
+                .flex()
+                .items_center()
+                .gap_1()
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(Theme::subtext0(theme))
+                        .child(format!("v{}", current_version)),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(Theme::subtext0(theme))
+                        .child("..."),
+                )
+                .into_any_element()
+        } else if let Some(ref info) = self.update_info {
+            // Update available - show clickable indicator
+            let new_version = info.version.clone();
+
+            div()
+                .id("sidebar-update-available")
+                .flex()
+                .items_center()
+                .gap_1()
+                .cursor_pointer()
+                .hover(|style| style.opacity(0.8))
+                .on_click(cx.listener(|this, _event, _cx| {
+                    this.download_update();
+                }))
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(Theme::subtext0(theme))
+                        .child(format!("v{}", current_version)),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(Theme::green(theme))
+                        .child(format!("-> v{}", new_version)),
+                )
+                .into_any_element()
+        } else {
+            // No update or up to date - just show version
+            div()
+                .text_xs()
+                .text_color(Theme::subtext0(theme))
+                .child(format!("v{}", current_version))
+                .into_any_element()
+        }
     }
 }

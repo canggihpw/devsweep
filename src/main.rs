@@ -77,20 +77,26 @@ fn main() {
 
 fn open_main_window(cx: &mut AppContext) {
     let bounds = Bounds::centered(None, size(px(1100.0), px(700.0)), cx);
-    cx.open_window(
-        WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(bounds)),
-            titlebar: Some(TitlebarOptions {
-                title: Some("DevSweep".into()),
-                appears_transparent: false,
+    let window = cx
+        .open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                titlebar: Some(TitlebarOptions {
+                    title: Some("DevSweep".into()),
+                    appears_transparent: false,
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        },
-        |cx| cx.new_view(|_cx| DevSweep::new()),
-    )
-    .unwrap();
+            },
+            |cx| cx.new_view(|_cx| DevSweep::new()),
+        )
+        .unwrap();
 
     // Activate the app to bring it to foreground
     cx.activate(true);
+
+    // Trigger update check after window opens
+    let _ = window.update(cx, |view, cx| {
+        view.check_for_updates(cx);
+    });
 }

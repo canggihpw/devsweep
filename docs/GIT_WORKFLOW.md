@@ -425,6 +425,119 @@ This means:
 - Coverage badge points to `main` branch
 - All status badges reflect `main` state
 
+## Release Process
+
+Releases follow the same branch workflow - never push directly to `main`.
+
+### Release Branch Naming
+
+Use the `release/` prefix:
+- `release/v0.3.0` - For version 0.3.0 release
+- `release/v1.0.0` - For version 1.0.0 release
+
+### Release Workflow
+
+```bash
+# 1. Start from updated main
+git checkout main
+git pull origin main
+
+# 2. Create release branch
+git checkout -b release/v0.3.0
+
+# 3. Prepare release (update version numbers)
+# - Update version in Cargo.toml
+# - Move CHANGELOG.md [Unreleased] to new version section
+# - Update version references in docs
+
+# 4. Verify everything works
+cargo check
+cargo test
+cargo clippy
+
+# 5. Commit release changes
+git add -A
+git commit -m "chore: prepare release v0.3.0"
+
+# 6. Push release branch
+git push -u origin release/v0.3.0
+
+# 7. Create Pull Request on GitHub
+# - Base: main ← Compare: release/v0.3.0
+# - Title: "Release v0.3.0"
+# - Description: Copy changelog entries for this release
+
+# 8. Wait for CI to pass, then merge PR
+
+# 9. After merge, create and push tag from main
+git checkout main
+git pull origin main
+git tag v0.3.0
+git push origin v0.3.0
+
+# 10. Cleanup
+git branch -d release/v0.3.0
+git push origin --delete release/v0.3.0
+```
+
+### Release Checklist
+
+Before creating release PR:
+- [ ] Version updated in `Cargo.toml`
+- [ ] `CHANGELOG.md` updated with release date
+- [ ] Version links updated at bottom of `CHANGELOG.md`
+- [ ] `docs/README.md` version table updated
+- [ ] All tests passing
+- [ ] No clippy warnings
+
+After PR is merged:
+- [ ] Tag created on main branch
+- [ ] Tag pushed to origin
+- [ ] GitHub Release created (optional, CI may automate)
+- [ ] Release branch deleted
+
+### Why Use Release Branches?
+
+1. **Code Review** - Release preparation gets reviewed like any other change
+2. **CI Validation** - All checks run before release hits main
+3. **Clean History** - Release commits go through normal PR flow
+4. **Rollback Safety** - Easy to reject a problematic release PR
+5. **Consistency** - Same workflow for features and releases
+
+### Tagging Strategy
+
+Tags are created **after** the release PR is merged to main:
+
+```bash
+# ✅ CORRECT - Tag after merge
+git checkout main
+git pull origin main
+git tag v0.3.0
+git push origin v0.3.0
+
+# ❌ WRONG - Don't tag on release branch
+git checkout release/v0.3.0
+git tag v0.3.0  # Wrong branch!
+```
+
+This ensures the tag points to the actual commit on `main`, not the branch.
+
+### Automated Releases (CI)
+
+The release workflow (`.github/workflows/release.yml`) triggers on version tags:
+
+```yaml
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+```
+
+When you push a tag like `v0.3.0`, CI automatically:
+1. Builds release binary
+2. Creates app bundle and DMG
+3. Creates GitHub Release with artifacts
+
 ## Quick Reference
 
 ### Recommended Workflow
