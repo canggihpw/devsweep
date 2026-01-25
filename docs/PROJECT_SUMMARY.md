@@ -28,7 +28,8 @@ DevSweep provides:
 ## Key Features
 
 ### Intelligent Scanning
-- Detects caches from 16+ development tools and frameworks
+- Detects caches from 17+ development tools and frameworks
+- Super categories for logical grouping (Development Tools, Package Managers, etc.)
 - Smart caching system for improved performance
 - Parallel scanning for speed
 - Real-time size calculation
@@ -40,9 +41,16 @@ DevSweep provides:
 - Automatic cleanup of old quarantined items
 
 ### Customizable Settings
-- Configurable cache TTL (Time-To-Live)
+- Configurable cache TTL (Time-To-Live) per category
+- TTL settings grouped by super category
+- Custom scan paths - add your own directories
 - Enable/disable cache functionality
-- Adjustable scan behavior
+
+### Update Checker
+- Automatic GitHub release checking
+- Version comparison with semver
+- Direct download links for new versions
+- Non-blocking background checks
 
 ### Modern User Interface
 - Native macOS look and feel
@@ -53,19 +61,32 @@ DevSweep provides:
 
 ## Supported Development Tools
 
-- **Node.js**: npm, yarn, pnpm caches and node_modules
+### Development Tools
+- **Docker**: Images, containers, build cache
+- **Homebrew**: Package caches
+- **Xcode**: DerivedData, archives
+- **IDEs**: VSCode, IntelliJ, JetBrains caches
+
+### Package Managers
+- **Node.js**: npm, yarn, pnpm caches
 - **Python**: pip cache, __pycache__, virtualenvs
 - **Rust**: Cargo registry, target directories
-- **Docker**: Images, containers, build cache
-- **Xcode**: DerivedData, archives
 - **Go**: Build cache, module cache
 - **Java**: Maven, Gradle caches
-- **Homebrew**: Package caches
-- **Browsers**: Chrome, Firefox, Safari, Edge caches
-- **IDEs**: VSCode, IntelliJ, JetBrains caches
+
+### Project Files
+- **node_modules**: Project dependencies in Documents/Projects
+- **Git Repositories**: Merged branches, stale remotes, large .git dirs
+- **Custom Paths**: User-defined directories
+
+### System & Browsers
+- **Browsers**: Chrome, Firefox, Safari, Edge, Arc caches
 - **Databases**: PostgreSQL, MySQL, Redis logs
-- **System**: Logs, shell history
-- And more...
+- **System**: Logs, crash reports, shell history
+- **General**: Large application caches
+
+### Trash
+- User trash contents
 
 ## Technical Stack
 
@@ -107,10 +128,10 @@ DevSweep provides:
 **Stability**: Beta - Core functionality stable, comprehensive test coverage
 
 ### Completed Features
-- Core scanning functionality
+- Core scanning functionality with 17+ categories
+- Super categories for logical grouping of scan results
 - Quarantine system with restore capabilities
 - Modern GPUI-based UI with tab navigation
-- Support for 16+ development tool categories
 - Light/dark theme toggle with theme-aware icons
 - Single-instance app behavior
 - Embedded app icons (light/dark variants)
@@ -118,16 +139,19 @@ DevSweep provides:
 - Scan caching for improved performance
 - CI/CD with automated testing and coverage reporting
 - Complete documentation (testing guide, Git workflow, coverage tracking)
+- Update checker with GitHub releases API
+- Custom scan paths (user-defined directories)
+- Git repository cleanup (merged branches, stale remotes, large .git)
 
 ### In Progress
-- Additional checker improvements
 - Performance optimization
+- Additional checker improvements
 
 ### Planned
-- Additional tool support
 - Scheduled scanning
-- Advanced filtering
-- Plugin system for custom checkers
+- Advanced filtering (size thresholds)
+- Export reports (CSV/JSON)
+- Menu bar mode
 - Cross-platform support (Linux, Windows)
 
 ## Use Cases

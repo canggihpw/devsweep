@@ -131,6 +131,12 @@ impl CacheConfig {
         self.category_ttls.get(category).copied()
     }
 
+    /// Set TTL for a specific category (in seconds) and save
+    pub fn set_ttl(&mut self, category: &str, ttl_seconds: u64) {
+        self.category_ttls.insert(category.to_string(), ttl_seconds);
+        let _ = self.save();
+    }
+
     pub fn load() -> Self {
         let config_path = Self::config_file_path();
         if let Ok(data) = fs::read_to_string(&config_path) {

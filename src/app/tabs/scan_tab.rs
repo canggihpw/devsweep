@@ -1,4 +1,4 @@
-use crate::app::state::{CategoryItem, CleanupItemData, DevSweep};
+use crate::app::state::{CategoryItem, CleanupItemData, DevSweep, SuperCategoryItem};
 use crate::ui::Theme;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -11,6 +11,7 @@ impl DevSweep {
         let total_reclaimable = self.total_reclaimable.clone();
         let selected_count = self.selected_items_count;
         let selected_size = self.selected_items_size.clone();
+        let super_categories = self.super_categories.clone();
         let categories = self.categories.clone();
         let items = self.all_items.clone();
 
@@ -278,31 +279,29 @@ impl DevSweep {
                             }),
                     ),
             )
-            // Categories list
+            // Super categories list
             .child(
                 div()
                     .id("scan-content")
                     .flex_1()
                     .w_full()
                     .overflow_y_scroll()
-                    .child(if categories.is_empty() {
+                    .child(if super_categories.is_empty() {
                         self.empty_state("Click 'Scan' to analyze your storage")
                     } else {
                         div().w_full().flex().flex_col().children(
-                            categories.iter().enumerate().map(|(cat_idx, category)| {
-                                let cat_items: Vec<_> = items
-                                    .iter()
-                                    .filter(|item| item.category_index == cat_idx)
-                                    .cloned()
-                                    .collect();
-
-                                self.render_category_section(
-                                    category.clone(),
-                                    cat_items,
-                                    cat_idx,
-                                    cx,
-                                )
-                            }),
+                            super_categories
+                                .iter()
+                                .enumerate()
+                                .map(|(super_idx, super_cat)| {
+                                    self.render_super_category_section(
+                                        super_cat.clone(),
+                                        super_idx,
+                                        &categories,
+                                        &items,
+                                        cx,
+                                    )
+                                }),
                         )
                     }),
             )
@@ -326,6 +325,145 @@ impl DevSweep {
             )
     }
 
+    /// Render a super category section with its child categories
+    pub fn render_super_category_section(
+        &self,
+        super_cat: SuperCategoryItem,
+        super_idx: usize,
+        all_categories: &[CategoryItem],
+        all_items: &[CleanupItemData],
+        cx: &mut ViewContext<Self>,
+    ) -> Div {
+        let expanded = super_cat.expanded;
+
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .border_b_1()
+            .border_color(Theme::surface1(self.theme_mode))
+            // Super category header
+            .child(
+                div()
+                    .id(SharedString::from(format!(
+                        "super-cat-header-{}",
+                        super_idx
+                    )))
+                    .w_full()
+                    .px_4()
+                    .py_3()
+                    .flex()
+                    .items_center()
+                    .gap_3()
+                    .bg(Theme::mantle(self.theme_mode))
+                    .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
+                    .active(|style| style.bg(Theme::surface1(self.theme_mode)).opacity(0.9))
+                    .cursor_pointer()
+                    .on_click(cx.listener(move |this, _event, cx| {
+                        this.toggle_super_category_expand(super_idx, cx);
+                        cx.notify();
+                    }))
+                    // Expand arrow
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(Theme::subtext0(self.theme_mode))
+                            .child(if expanded { "▼" } else { "▶" }),
+                    )
+                    // Checkbox
+                    .child(
+                        div()
+                            .id(SharedString::from(format!("super-cat-check-{}", super_idx)))
+                            .w_4()
+                            .h_4()
+                            .rounded_sm()
+                            .border_1()
+                            .border_color(if super_cat.checked {
+                                Theme::blue(self.theme_mode)
+                            } else {
+                                Theme::surface2(self.theme_mode)
+                            })
+                            .bg(if super_cat.checked {
+                                Theme::blue(self.theme_mode)
+                            } else {
+                                Theme::transparent()
+                            })
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .cursor_pointer()
+                            .active(|style| style.opacity(0.7))
+                            .on_click(cx.listener(move |this, _event, cx| {
+                                this.toggle_super_category(super_idx, cx);
+                                cx.notify();
+                            }))
+                            .when(super_cat.checked, |d| {
+                                d.child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(Theme::crust(self.theme_mode))
+                                        .child("✓"),
+                                )
+                            }),
+                    )
+                    // Icon
+                    .child(div().text_base().child(super_cat.icon.clone()))
+                    // Name
+                    .child(
+                        div()
+                            .flex_1()
+                            .text_sm()
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(Theme::text(self.theme_mode))
+                            .child(super_cat.name.clone()),
+                    )
+                    // Category count badge
+                    .child(
+                        div()
+                            .px_2()
+                            .py_1()
+                            .bg(Theme::surface0(self.theme_mode))
+                            .rounded_sm()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(Theme::subtext0(self.theme_mode))
+                                    .child(format!(
+                                        "{} categories, {} items",
+                                        super_cat.category_count, super_cat.item_count
+                                    )),
+                            ),
+                    )
+                    // Total size
+                    .child(
+                        div()
+                            .text_sm()
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(Theme::peach(self.theme_mode))
+                            .child(super_cat.size_str.clone()),
+                    ),
+            )
+            // Child categories (if expanded)
+            .when(expanded, |d| {
+                d.child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .bg(Theme::base(self.theme_mode))
+                        .children(super_cat.category_indices.iter().map(|&cat_idx| {
+                            let category = all_categories[cat_idx].clone();
+                            let cat_items: Vec<_> = all_items
+                                .iter()
+                                .filter(|item| item.category_index == cat_idx)
+                                .cloned()
+                                .collect();
+                            self.render_category_section(category, cat_items, cat_idx, cx)
+                        })),
+                )
+            })
+    }
+
     pub fn render_category_section(
         &self,
         category: CategoryItem,
@@ -340,20 +478,21 @@ impl DevSweep {
             .flex()
             .flex_col()
             .border_b_1()
-            .border_color(Theme::surface0(self.theme_mode))
-            // Category header
+            .border_color(Theme::border_subtle(self.theme_mode))
+            // Category header (indented since it's inside super category)
             .child(
                 div()
                     .id(SharedString::from(format!("cat-header-{}", cat_idx)))
                     .w_full()
-                    .px_4()
-                    .py_3()
+                    .pl_8() // Indent to show hierarchy
+                    .pr_4()
+                    .py_2()
                     .flex()
                     .items_center()
                     .gap_3()
-                    .bg(Theme::surface0(self.theme_mode))
-                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+                    .bg(Theme::base(self.theme_mode))
+                    .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
+                    .active(|style| style.bg(Theme::surface1(self.theme_mode)).opacity(0.9))
                     .cursor_pointer()
                     .on_click(cx.listener(move |this, _event, cx| {
                         this.toggle_category_expand(cat_idx, cx);
@@ -468,8 +607,8 @@ impl DevSweep {
         div()
             .id(SharedString::from(format!("item-{}", global_idx)))
             .w_full()
-            .px_4()
-            .pl_12()
+            .pl_16() // Further indent for items (inside category, inside super category)
+            .pr_4()
             .py_2()
             .flex()
             .items_center()

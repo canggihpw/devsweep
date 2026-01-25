@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-25
+
+### Added
+- Super categories for logical grouping of scan results and TTL settings
+  - Development Tools (Docker, Homebrew, Xcode, IDE Caches)
+  - Package Managers (Node.js, Python, Rust/Cargo, Go, Java)
+  - Project Files (node_modules, Git Repositories, Custom Paths)
+  - System & Browsers (System Logs, Browser Caches, Shell, Database, General)
+  - Trash
+- Update checker with GitHub releases API integration
+  - Automatic version comparison using semver
+  - Download button links to latest DMG
+  - Non-blocking background checks
+- Custom scan paths feature in Settings tab
+  - Browse or manually enter directories
+  - Toggle paths on/off without removing
+  - Persistent configuration
+- Git repository cleanup checker
+  - Merged branches detection and cleanup
+  - Stale remote-tracking branch detection
+  - Large .git directory identification (>100MB)
+  - Local-only operations (no network/credential prompts)
+- New dependencies: `ureq` (HTTP client), `semver` (version comparison)
+
+### Changed
+- Settings tab TTL section now grouped by super category
+- Scan tab now displays hierarchical super category > category > item structure
+- Updated category names for consistency:
+  - "Node.js/npm/yarn" → "Node.js Package Managers"
+  - "Java (Gradle/Maven)" → "Java Build Tools"
+  - "System Logs" → "System Logs & Crash Reports"
+- Updated all documentation to reflect new features
+
+### Fixed
+- SuperCategoryType::from_category_name() now correctly maps all checker category names
+
 ## [0.2.0] - 2026-01-22
 
 ### Added
@@ -90,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Version Links
 
-[Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/canggihpw/devsweep/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/canggihpw/devsweep/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/canggihpw/devsweep/releases/tag/v0.1.0

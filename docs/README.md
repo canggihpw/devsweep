@@ -39,6 +39,8 @@ devsweep/
 │   ├── cleanup_history.rs # Quarantine system
 │   ├── cache_settings.rs  # Settings persistence
 │   ├── single_instance.rs # Single-instance handling
+│   ├── update_checker.rs  # GitHub releases API
+│   ├── custom_paths.rs    # User-defined scan paths
 │   ├── assets.rs          # Asset loading
 │   ├── checkers/          # Tool-specific scanners
 │   │   ├── mod.rs
@@ -55,10 +57,11 @@ devsweep/
 │   │   ├── db.rs
 │   │   ├── logs.rs
 │   │   ├── browser.rs
-│   │   └── general.rs
+│   │   ├── general.rs
+│   │   └── git.rs         # Git repository cleanup
 │   ├── app/               # GPUI application
 │   │   ├── mod.rs
-│   │   ├── state.rs
+│   │   ├── state.rs       # App state + SuperCategoryType
 │   │   ├── actions.rs
 │   │   ├── render.rs
 │   │   └── tabs/
@@ -79,6 +82,7 @@ devsweep/
 ├── assets/                # Icons and images
 ├── docs/                  # Documentation (you are here)
 │   ├── README.md          # This file
+│   ├── AI_CONTEXT.md      # AI assistant context
 │   ├── PROJECT_SUMMARY.md # Project overview
 │   ├── GIT_WORKFLOW.md    # Git workflow
 │   ├── VERSIONING.md      # Versioning guide
@@ -100,10 +104,11 @@ devsweep/
 
 | Metric | Value |
 |--------|-------|
-| Version | 0.1.0 |
-| Tests | 332 |
-| Coverage | 57.33% |
+| Version | 0.3.0 |
+| Tests | 332+ |
+| Coverage | ~57% |
 | Pass Rate | 100% |
+| Categories | 17+ |
 
 ## Quick Links
 

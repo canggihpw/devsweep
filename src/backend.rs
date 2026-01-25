@@ -1,5 +1,6 @@
 use crate::checkers;
 use crate::cleanup_history::{CleanupHistory, CleanupItemRecord, CleanupRecord};
+use crate::custom_paths;
 use crate::scan_cache::{PathTracker, ScanCache};
 use crate::types::{CheckResult, CleanupItem};
 use crate::utils::format_size;
@@ -68,7 +69,9 @@ impl StorageBackend {
             ("System Logs", checkers::check_system_logs),
             ("Browser Caches", checkers::check_browser_caches),
             ("node_modules in Projects", checkers::check_node_modules),
+            ("Git Repositories", checkers::check_git_repos),
             ("General Caches", checkers::check_general_caches),
+            ("Custom Paths", custom_paths::check_custom_paths),
             ("Trash", checkers::check_trash),
         ];
 
@@ -318,6 +321,13 @@ impl StorageBackend {
             .iter()
             .map(|(k, v)| (k.clone(), *v))
             .collect()
+    }
+
+    /// Set TTL for a specific category (in seconds)
+    pub fn set_cache_ttl(&mut self, category: &str, ttl_seconds: u64) {
+        let mut config = self.scan_cache.get_config().clone();
+        config.set_ttl(category, ttl_seconds);
+        self.scan_cache.set_config(config);
     }
 
     /// Reset cache configuration to defaults

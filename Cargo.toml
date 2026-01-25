@@ -1,6 +1,6 @@
 [package]
 name = "devsweep"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["DevSweep Contributors"]
 description = "A modern macOS desktop application that helps developers reclaim disk space by identifying and safely removing development tool caches and build artifacts"
@@ -24,6 +24,8 @@ rayon = "1.8"
 chrono = "0.4"
 fs2 = "0.4.3"
 image = "0.25.9"
+ureq = { version = "2.9", features = ["json"] }
+semver = "1.0"
 
 [dev-dependencies]
 tempfile = "3.8"

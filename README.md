@@ -19,7 +19,8 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 - **Smart Scanning**: Primary "Scan" button uses cache for instant results
 - **Full Rescan Option**: Secondary "Full Rescan" link for complete fresh analysis
 - **Intelligent Caching**: Detects file changes and cache expiration automatically
-- **16+ Categories**: Organized by tool (Docker, Node.js, Python, Xcode, etc.)
+- **17+ Categories**: Organized by tool (Docker, Node.js, Python, Xcode, Git, etc.)
+- **Super Categories**: Items grouped into logical sections (Development Tools, Package Managers, Project Files, System & Browsers, Trash)
 - **Size Visualization**: Shows exact size for each item and category
 - **Selective Cleanup**: Choose exactly what to delete with checkboxes
 - **Scrollable Content**: Smooth scrolling through large result sets
@@ -43,12 +44,18 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 ### ⚙️ Settings Tab
 - **Cache TTL Configuration**: Customize how long scan results are cached per category
 - **Per-Category Control**: Set different TTL values for each tool category
+- **Grouped by Super Category**: TTL settings organized by Development Tools, Package Managers, etc.
+- **Custom Scan Paths**: Add your own directories to include in scans
+- **Browse or Type Paths**: Use native folder picker or enter paths manually
+- **Toggle Custom Paths**: Enable/disable individual custom paths without removing them
 - **Reset to Defaults**: Quick button to restore default settings
 - **Persistent Settings**: All settings saved and restored on app restart
 - **Scrollable Interface**: Easy navigation through all settings
 
 ### ℹ️ About Tab
-- **App Information**: Version 0.2.0, description, and credits
+- **App Information**: Version, description, and credits
+- **Update Checker**: Automatically checks for new releases on GitHub
+- **Download Updates**: Direct link to download new versions when available
 - **Feature List**: Complete overview of capabilities
 - **Technology Stack**: Built with Rust + GPUI
 - **Clean Design**: Centered layout with app logo
@@ -63,24 +70,35 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 
 ## Supported Categories
 
-The app scans and cleans the following (16 categories):
+The app scans and cleans the following (17 categories), organized into super categories:
 
+### Development Tools
 1. **Docker** - Images, containers, volumes, build cache
 2. **Homebrew** - Cache, downloads, old versions, logs
-3. **Node.js/npm/yarn** - Global cache, yarn cache
-4. **Python** - pip cache, __pycache__ folders, virtualenvs
-5. **Rust/Cargo** - Registry cache, git checkouts, target directories
-6. **Xcode** - DerivedData, archives, device support
-7. **Java (Gradle/Maven)** - Gradle cache, Maven repository
+3. **Xcode** - DerivedData, archives, device support
+4. **IDE Caches** - VS Code, JetBrains IDEs, Sublime Text
+
+### Package Managers
+5. **Node.js Package Managers** - npm, yarn, pnpm global caches
+6. **Python** - pip cache, __pycache__ folders, virtualenvs
+7. **Rust/Cargo** - Registry cache, git checkouts, target directories
 8. **Go** - Build cache, module cache
-9. **IDE Caches** - VS Code, JetBrains IDEs, Sublime Text
-10. **Shell Caches** - Oh My Zsh, Powerlevel10k, zsh plugins
-11. **Database Caches** - PostgreSQL, MySQL, MongoDB, Redis logs
-12. **System Logs** - Crash reports, diagnostic reports, app logs
-13. **Browser Caches** - Safari, Chrome, Brave, Firefox, Edge, Arc, Opera, Vivaldi
-14. **node_modules in Projects** - Project dependencies (~/Documents, ~/Projects)
-15. **General Caches** - Large application caches
-16. **Trash** - User trash contents
+9. **Java Build Tools** - Gradle cache, Maven repository
+
+### Project Files
+10. **node_modules in Projects** - Project dependencies (~/Documents, ~/Projects)
+11. **Git Repositories** - Merged branches, stale remotes, large .git directories
+12. **Custom Paths** - User-defined directories to scan
+
+### System & Browsers
+13. **System Logs & Crash Reports** - Crash reports, diagnostic reports, app logs
+14. **Browser Caches** - Safari, Chrome, Brave, Firefox, Edge, Arc, Opera, Vivaldi
+15. **Shell Caches** - Oh My Zsh, Powerlevel10k, zsh plugins
+16. **Database Caches** - PostgreSQL, MySQL, MongoDB, Redis logs
+17. **General Caches** - Large application caches
+
+### Trash
+18. **Trash** - User trash contents
 
 ## Installation
 
@@ -163,13 +181,21 @@ cargo build --release
 
 #### ⚙️ Settings Tab
 - Configure cache TTL (Time To Live) for each category
+- TTL settings grouped by super category for easier navigation
 - 0 minutes = always rescan (no cache)
 - Higher values = faster subsequent scans
+- **Custom Scan Paths**:
+  - Click "Browse Folder..." to select directories
+  - Or "Enter Path..." to type a path manually
+  - Toggle paths on/off without removing them
+  - Remove paths with the X button
 - "Reset to Defaults" restores recommended settings
 - All settings persist between app launches
 
 #### ℹ️ About Tab
 - App version and description
+- **Update checker**: Automatically checks GitHub for new releases
+- **Download button**: Opens browser to download latest DMG when update available
 - Feature highlights
 - Technology stack information
 - Credits and acknowledgments
@@ -285,10 +311,12 @@ devsweep/
 │   ├── scan_cache.rs        # Cache management with TTL
 │   ├── cleanup_history.rs   # Quarantine and undo system
 │   ├── cache_settings.rs    # Settings persistence
+│   ├── update_checker.rs    # GitHub releases API, version comparison
+│   ├── custom_paths.rs      # User-defined custom scan paths
 │   ├── app/                 # GPUI application components
 │   │   ├── mod.rs           # Module exports
-│   │   ├── state.rs         # Application state (DevSweep struct)
-│   │   ├── actions.rs       # Action handlers (scan, clean, etc.)
+│   │   ├── state.rs         # Application state (DevSweep struct, SuperCategoryType)
+│   │   ├── actions.rs       # Action handlers (scan, clean, update check, etc.)
 │   │   ├── render.rs        # Main UI rendering, sidebar
 │   │   └── tabs/            # Tab-specific UI
 │   │       ├── mod.rs
@@ -311,7 +339,8 @@ devsweep/
 │   │   ├── db.rs
 │   │   ├── logs.rs
 │   │   ├── browser.rs
-│   │   └── general.rs
+│   │   ├── general.rs
+│   │   └── git.rs           # Git repos: merged branches, stale remotes
 │   └── ui/
 │       ├── mod.rs
 │       ├── sidebar.rs       # Tab definitions and icons
@@ -340,6 +369,8 @@ devsweep/
 - **[Chrono](https://github.com/chronotope/chrono)** - Date and time handling
 - **[rust-embed](https://github.com/pyrossh/rust-embed)** - Embed assets in binary
 - **[image](https://github.com/image-rs/image)** - Image decoding for icons
+- **[ureq](https://github.com/algesten/ureq)** - HTTP client for update checking
+- **[semver](https://github.com/dtolnay/semver)** - Semantic version parsing and comparison
 - **[Catppuccin](https://github.com/catppuccin/catppuccin)** - Latte/Mocha theme palettes
 
 ## How It Works
@@ -402,6 +433,7 @@ devsweep/
 - **Scan Cache**: `~/Library/Caches/development-cleaner/scan_cache.json`
 - **Cleanup History**: `~/Library/Caches/development-cleaner/cleanup_history.json`
 - **Settings**: `~/Library/Application Support/development-cleaner/cache_settings.json`
+- **Custom Paths**: `~/.config/devsweep/custom_paths.json`
 - **Quarantine Files**: `~/Library/Caches/development-cleaner/quarantine/`
 
 ## Troubleshooting
@@ -536,10 +568,13 @@ xcrun stapler staple "DevSweep-0.2.0.dmg"
 - [x] **Single-instance app**: Prevents multiple windows when reopening
 - [x] **Comprehensive testing**: 332 tests with 57% line coverage (excluding UI)
 - [x] **Performance benchmarks**: Cached scans complete in < 100ms
+- [x] **Custom scan paths**: Add your own directories to scan via Settings tab
+- [x] **Git repository cleanup**: Merged branches, stale remotes, large .git directories
+- [x] **Update checker**: Automatic GitHub release checking with download links
+- [x] **Super categories**: Logical grouping of scan results (Development Tools, Package Managers, etc.)
 
 ### Planned Features
 
-- [ ] **Custom scan paths**: Add your own directories to scan
 - [ ] **Scheduled cleanups**: Automatic cleaning on schedule
 - [ ] **Size threshold filters**: "Show only items > 1 GB"
 - [ ] **Export reports**: Save scan results as CSV/JSON
@@ -548,7 +583,6 @@ xcrun stapler staple "DevSweep-0.2.0.dmg"
 - [ ] **Menu bar mode**: Quick access from menu bar
 - [ ] **Whitelist/blacklist**: Exclude specific paths
 - [ ] **Cleanup profiles**: Save and load cleanup configurations
-- [ ] **Git repository cleanup**: Old branches, stale remotes
 - [ ] **Language server caches**: LSP data, TypeScript servers
 - [ ] **Build artifact cleanup**: Old build outputs, artifacts
 - [ ] **Trash schedule**: Auto-empty trash older than X days
@@ -612,10 +646,10 @@ A: "Scan" uses cached results for speed (instant if cache valid). "Full Rescan" 
 A: Yes, up to 10 GB. It auto-cleans when exceeding this limit. You can manually "Delete All" anytime.
 
 **Q: Can I customize which categories to scan?**  
-A: Currently all categories are scanned. Use checkboxes to select what to clean. Custom scan paths are planned.
+A: All built-in categories are always scanned, but you can add custom paths in Settings. Use checkboxes to select what to clean.
 
 **Q: Is my data sent anywhere?**  
-A: No. Everything runs locally. No telemetry, no network requests, no data collection.
+A: No. Everything runs locally. The only network request is the optional update checker that queries GitHub's public API for new releases. No personal data is collected or transmitted.
 
 **Q: Why GPUI instead of other UI frameworks?**  
 A: GPUI provides native macOS performance with GPU acceleration, smooth 60fps, and is built for developer tools.
