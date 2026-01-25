@@ -1,9 +1,16 @@
 name: Release
 
+# This workflow creates a GitHub Release when triggered manually.
+# Tags can be created freely without triggering a release.
+# To create a release, manually run this workflow and specify the tag.
+
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g., v0.3.0). Tag must already exist."
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -23,10 +30,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Validate tag exists
+        run: |
+          if ! git rev-parse "${{ inputs.tag }}" >/dev/null 2>&1; then
+            echo "Error: Tag '${{ inputs.tag }}' does not exist"
+            exit 1
+          fi
 
       - name: Get version from tag
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ inputs.tag }}
 
       - name: Extract changelog
         id: changelog
@@ -44,7 +62,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ inputs.tag }}
           release_name: Release ${{ steps.get_version.outputs.version }}
           body: |
             ## What's Changed
@@ -84,7 +102,7 @@ jobs:
 
             See the checksums file for verification.
           draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          prerelease: ${{ contains(inputs.tag, 'alpha') || contains(inputs.tag, 'beta') || contains(inputs.tag, 'rc') }}
 
   build-release:
     name: Build Release Binary
@@ -94,6 +112,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
