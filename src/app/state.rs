@@ -9,6 +9,67 @@ use gpui::*;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+/// Size filter threshold options
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum SizeFilter {
+    /// Show all items (no filter)
+    #[default]
+    All,
+    /// Show items > 1 MB
+    Above1MB,
+    /// Show items > 10 MB
+    Above10MB,
+    /// Show items > 100 MB
+    Above100MB,
+    /// Show items > 500 MB
+    Above500MB,
+    /// Show items > 1 GB
+    Above1GB,
+}
+
+impl SizeFilter {
+    /// Get the threshold in bytes for this filter
+    pub fn threshold_bytes(&self) -> u64 {
+        match self {
+            Self::All => 0,
+            Self::Above1MB => 1024 * 1024,
+            Self::Above10MB => 10 * 1024 * 1024,
+            Self::Above100MB => 100 * 1024 * 1024,
+            Self::Above500MB => 500 * 1024 * 1024,
+            Self::Above1GB => 1024 * 1024 * 1024,
+        }
+    }
+
+    /// Get display label for this filter
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::All => "All sizes",
+            Self::Above1MB => "> 1 MB",
+            Self::Above10MB => "> 10 MB",
+            Self::Above100MB => "> 100 MB",
+            Self::Above500MB => "> 500 MB",
+            Self::Above1GB => "> 1 GB",
+        }
+    }
+
+    /// Get all filter options in order
+    pub fn all_options() -> Vec<Self> {
+        vec![
+            Self::All,
+            Self::Above1MB,
+            Self::Above10MB,
+            Self::Above100MB,
+            Self::Above500MB,
+            Self::Above1GB,
+        ]
+    }
+
+    /// Check if an item with the given size passes this filter
+    pub fn passes(&self, size: u64) -> bool {
+        size >= self.threshold_bytes()
+    }
+}
+
 // Super category definitions
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SuperCategoryType {
@@ -184,6 +245,13 @@ pub struct DevSweep {
     pub custom_paths: Vec<CustomPath>,
     pub new_custom_path_input: String,
     pub new_custom_path_label: String,
+    // Size filter state
+    pub size_filter: SizeFilter,
+    pub size_filter_dropdown_open: bool,
+    /// Filtered items (items that pass the current size filter)
+    pub filtered_items: Vec<CleanupItemData>,
+    /// Filtered super categories (rebuilt when filter changes)
+    pub filtered_super_categories: Vec<SuperCategoryItem>,
 }
 
 impl Default for DevSweep {
@@ -244,6 +312,11 @@ impl DevSweep {
             custom_paths: CustomPathsConfig::load().paths,
             new_custom_path_input: String::new(),
             new_custom_path_label: String::new(),
+            // Size filter state
+            size_filter: SizeFilter::default(),
+            size_filter_dropdown_open: false,
+            filtered_items: Vec::new(),
+            filtered_super_categories: Vec::new(),
         }
     }
 

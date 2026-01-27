@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Size threshold filters for scan results
+  - Filter dropdown in scan tab stats bar
+  - Options: All, > 1 MB, > 10 MB, > 100 MB, > 500 MB, > 1 GB
+  - Dynamically filters items and updates totals
+- Non-blocking UI for long-running operations
+  - Scan, cleanup, undo, and quarantine operations run in background threads
+  - Users can navigate between tabs while operations are in progress
+- Comprehensive test coverage for checkers
+  - Database checker tests (PostgreSQL, MySQL, MongoDB, Redis, SQLite)
+  - Go checker tests (module cache, build cache)
+  - Shell checker tests (Zsh, Bash, Fish, Starship)
+  - IDE checker tests (VSCode, JetBrains, Android Studio)
+  - Homebrew checker tests (cache, cellar)
+  - Extended Docker checker tests
+
+### Fixed
+- UI freezing during long-running scan and cleanup operations
+- Dropdown overlay z-index issue (now renders on top of scan results)
+
 ## [0.3.0] - 2026-01-25
 
 ### Added

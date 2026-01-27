@@ -65,6 +65,16 @@ src/
 ### Main App State (`src/app/state.rs`)
 
 ```rust
+// Size filter for filtering scan results by size threshold
+pub enum SizeFilter {
+    All,        // Show all items (no filter)
+    Above1MB,   // Show items > 1 MB
+    Above10MB,  // Show items > 10 MB
+    Above100MB, // Show items > 100 MB
+    Above500MB, // Show items > 500 MB
+    Above1GB,   // Show items > 1 GB
+}
+
 // Super category for grouping related categories
 pub enum SuperCategoryType {
     DevelopmentTools,   // Docker, Homebrew, Xcode, IDE Caches
@@ -90,6 +100,12 @@ pub struct DevSweep {
     pub category_data: Vec<CategoryData>,         // Backend data
     pub all_items: Vec<CleanupItemData>,          // Flattened items
     pub selected_items: Vec<CleanupItem>,         // Items to clean
+    
+    // Size filter
+    pub size_filter: SizeFilter,                  // Current filter selection
+    pub size_filter_dropdown_open: bool,          // Dropdown UI state
+    pub filtered_items: Vec<CleanupItemData>,     // Items passing filter
+    pub filtered_super_categories: Vec<SuperCategoryItem>, // Filtered hierarchy
     
     // Quarantine
     pub quarantine_records: Vec<QuarantineRecordData>,

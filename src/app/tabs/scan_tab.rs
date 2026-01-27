@@ -1,5 +1,6 @@
-use crate::app::state::{CategoryItem, CleanupItemData, DevSweep, SuperCategoryItem};
+use crate::app::state::{CategoryItem, CleanupItemData, DevSweep, SizeFilter, SuperCategoryItem};
 use crate::ui::Theme;
+use crate::utils;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 
@@ -11,11 +12,28 @@ impl DevSweep {
         let total_reclaimable = self.total_reclaimable.clone();
         let selected_count = self.selected_items_count;
         let selected_size = self.selected_items_size.clone();
-        let super_categories = self.super_categories.clone();
         let categories = self.categories.clone();
         let items = self.all_items.clone();
+        let size_filter = self.size_filter;
+        let size_filter_dropdown_open = self.size_filter_dropdown_open;
+
+        // Use filtered super categories when a filter is active
+        let super_categories = if size_filter == SizeFilter::All {
+            self.super_categories.clone()
+        } else {
+            self.filtered_super_categories.clone()
+        };
+
+        // Calculate filtered total if filter is active
+        let filtered_total: SharedString = if size_filter == SizeFilter::All {
+            total_reclaimable.clone()
+        } else {
+            let total: u64 = self.filtered_items.iter().map(|i| i.size).sum();
+            utils::format_size(total).into()
+        };
 
         div()
+            .relative()
             .w_full()
             .h_full()
             .flex()
@@ -142,6 +160,12 @@ impl DevSweep {
                             .flex()
                             .items_center()
                             .gap_6()
+                            // Size filter button
+                            .child(self.render_size_filter_button(
+                                size_filter,
+                                size_filter_dropdown_open,
+                                cx,
+                            ))
                             .child(
                                 div()
                                     .flex()
@@ -151,14 +175,18 @@ impl DevSweep {
                                         div()
                                             .text_sm()
                                             .text_color(Theme::subtext0(self.theme_mode))
-                                            .child("Total Reclaimable:"),
+                                            .child(if size_filter == SizeFilter::All {
+                                                "Total Reclaimable:"
+                                            } else {
+                                                "Filtered Total:"
+                                            }),
                                     )
                                     .child(
                                         div()
                                             .text_sm()
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(Theme::peach(self.theme_mode))
-                                            .child(total_reclaimable),
+                                            .child(filtered_total),
                                     ),
                             )
                             .child(
@@ -305,6 +333,10 @@ impl DevSweep {
                         )
                     }),
             )
+            // Size filter dropdown overlay (rendered last to appear on top)
+            .when(size_filter_dropdown_open, |d| {
+                d.child(self.render_size_filter_overlay(size_filter, cx))
+            })
     }
 
     pub fn empty_state(&self, message: &str) -> Div {
@@ -712,5 +744,123 @@ impl DevSweep {
                     .text_color(Theme::subtext1(self.theme_mode))
                     .child(item.size_str.clone()),
             )
+    }
+
+    /// Render the size filter button only (dropdown menu is rendered separately as overlay)
+    fn render_size_filter_button(
+        &self,
+        current_filter: SizeFilter,
+        is_open: bool,
+        cx: &mut ViewContext<Self>,
+    ) -> Stateful<Div> {
+        div()
+            .id("size-filter-btn")
+            .px_3()
+            .py_2()
+            .bg(Theme::surface0(self.theme_mode))
+            .rounded_md()
+            .cursor_pointer()
+            .border_1()
+            .border_color(if is_open {
+                Theme::blue(self.theme_mode)
+            } else {
+                Theme::surface1(self.theme_mode)
+            })
+            .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+            .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+            .on_click(cx.listener(|this, _event, cx| {
+                this.toggle_size_filter_dropdown(cx);
+                cx.notify();
+            }))
+            .flex()
+            .items_center()
+            .gap_2()
+            .child(
+                div()
+                    .text_sm()
+                    .text_color(Theme::subtext0(self.theme_mode))
+                    .child("Filter:"),
+            )
+            .child(
+                div()
+                    .text_sm()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(Theme::text(self.theme_mode))
+                    .child(current_filter.label()),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(Theme::subtext0(self.theme_mode))
+                    .child(if is_open { "▲" } else { "▼" }),
+            )
+    }
+
+    /// Render the size filter dropdown overlay (rendered at root level to appear on top)
+    fn render_size_filter_overlay(
+        &self,
+        current_filter: SizeFilter,
+        cx: &mut ViewContext<Self>,
+    ) -> Div {
+        div()
+            .absolute()
+            .top(px(140.0)) // Position below header + stats bar
+            .left(px(16.0))
+            .min_w(px(160.0))
+            .bg(Theme::surface0(self.theme_mode))
+            .border_1()
+            .border_color(Theme::surface1(self.theme_mode))
+            .rounded_md()
+            .shadow_lg()
+            .flex()
+            .flex_col()
+            .children(SizeFilter::all_options().into_iter().map(|filter| {
+                let is_selected = filter == current_filter;
+                div()
+                    .id(SharedString::from(format!(
+                        "filter-option-{}",
+                        filter.label()
+                    )))
+                    .px_3()
+                    .py_2()
+                    .cursor_pointer()
+                    .bg(if is_selected {
+                        Theme::surface1(self.theme_mode)
+                    } else {
+                        Theme::transparent()
+                    })
+                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+                    .on_click(cx.listener(move |this, _event, cx| {
+                        this.set_size_filter(filter, cx);
+                        cx.notify();
+                    }))
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(if is_selected {
+                                Theme::blue(self.theme_mode)
+                            } else {
+                                Theme::text(self.theme_mode)
+                            })
+                            .font_weight(if is_selected {
+                                FontWeight::SEMIBOLD
+                            } else {
+                                FontWeight::NORMAL
+                            })
+                            .child(filter.label()),
+                    )
+                    .when(is_selected, |d| {
+                        d.child(
+                            div()
+                                .text_xs()
+                                .text_color(Theme::blue(self.theme_mode))
+                                .child("✓"),
+                        )
+                    })
+            }))
     }
 }

@@ -21,6 +21,7 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 - **Intelligent Caching**: Detects file changes and cache expiration automatically
 - **17+ Categories**: Organized by tool (Docker, Node.js, Python, Xcode, Git, etc.)
 - **Super Categories**: Items grouped into logical sections (Development Tools, Package Managers, Project Files, System & Browsers, Trash)
+- **Size Threshold Filters**: Filter results by size (> 1MB, > 10MB, > 100MB, > 500MB, > 1GB)
 - **Size Visualization**: Shows exact size for each item and category
 - **Selective Cleanup**: Choose exactly what to delete with checkboxes
 - **Scrollable Content**: Smooth scrolling through large result sets
@@ -159,6 +160,7 @@ cargo build --release
 #### 🔍 Scan Tab
 - **Primary action**: "Scan" button (uses cache for speed)
 - **Secondary action**: "Full Rescan" link (bypasses cache)
+- **Size filter dropdown**: Filter by size threshold (All, > 1MB, > 10MB, > 100MB, > 500MB, > 1GB)
 - Click category headers to expand/collapse items
 - Check categories to select all items within
 - Individual item selection with checkboxes
@@ -572,11 +574,12 @@ xcrun stapler staple "DevSweep-0.2.0.dmg"
 - [x] **Git repository cleanup**: Merged branches, stale remotes, large .git directories
 - [x] **Update checker**: Automatic GitHub release checking with download links
 - [x] **Super categories**: Logical grouping of scan results (Development Tools, Package Managers, etc.)
+- [x] **Size threshold filters**: Filter scan results by size (> 1MB, > 10MB, > 100MB, > 500MB, > 1GB)
+- [x] **Non-blocking UI**: Background processing for long-running operations
 
 ### Planned Features
 
 - [ ] **Scheduled cleanups**: Automatic cleaning on schedule
-- [ ] **Size threshold filters**: "Show only items > 1 GB"
 - [ ] **Export reports**: Save scan results as CSV/JSON
 - [ ] **Cloud storage cleanup**: Google Drive, Dropbox, iCloud caches
 - [ ] **Smart recommendations**: AI-based cleanup suggestions

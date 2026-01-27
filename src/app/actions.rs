@@ -1,6 +1,6 @@
 use crate::app::state::{
     CacheTTLSetting, CategoryItem, CleanupItemData, DevSweep, QuarantineItemData,
-    QuarantineRecordData, SuperCategoryItem, SuperCategoryType,
+    QuarantineRecordData, SizeFilter, SuperCategoryItem, SuperCategoryType,
 };
 use crate::custom_paths::CustomPathsConfig;
 use crate::ui::sidebar::Tab;
@@ -178,13 +178,15 @@ impl DevSweep {
         let backend = self.backend.clone();
 
         cx.spawn(|this, mut cx| async move {
-            // Run scan in background
-            let result = {
+            // Run blocking scan in a separate thread to keep UI responsive
+            let result = std::thread::spawn(move || {
                 let mut backend = backend.lock().unwrap();
                 let cats = backend.scan_with_cache(use_cache);
                 let total = backend.get_total_reclaimable();
                 (cats, total)
-            };
+            })
+            .join()
+            .unwrap_or_else(|_| (Vec::new(), 0));
 
             let categories = result.0;
             let total = result.1;
@@ -427,6 +429,9 @@ impl DevSweep {
                 category_indices,
             });
         }
+
+        // Apply size filter to build filtered views
+        self.apply_size_filter();
     }
 
     /// Update super category checked states based on their child categories
@@ -483,10 +488,13 @@ impl DevSweep {
         let items_to_clean = self.selected_items.clone();
 
         cx.spawn(|this, mut cx| async move {
-            let result = {
+            // Run blocking cleanup in a separate thread to keep UI responsive
+            let result = std::thread::spawn(move || {
                 let mut backend = backend.lock().unwrap();
                 backend.execute_cleanup_with_history(&items_to_clean, true)
-            };
+            })
+            .join()
+            .unwrap_or_else(|_| Err("Cleanup thread panicked".to_string()));
 
             let _ = cx.update(|cx| {
                 let _ = this.update(cx, |this, cx| {
@@ -523,10 +531,13 @@ impl DevSweep {
         let backend = self.backend.clone();
 
         cx.spawn(|this, mut cx| async move {
-            let result = {
+            // Run blocking undo in a separate thread to keep UI responsive
+            let result = std::thread::spawn(move || {
                 let mut backend = backend.lock().unwrap();
                 backend.undo_cleanup(&record_id)
-            };
+            })
+            .join()
+            .unwrap_or_else(|_| Err("Undo thread panicked".to_string()));
 
             let _ = cx.update(|cx| {
                 let _ = this.update(cx, |this, cx| {
@@ -563,10 +574,13 @@ impl DevSweep {
         let backend = self.backend.clone();
 
         cx.spawn(|this, mut cx| async move {
-            let result = {
+            // Run blocking delete in a separate thread to keep UI responsive
+            let result = std::thread::spawn(move || {
                 let mut backend = backend.lock().unwrap();
                 backend.delete_quarantine_item(&record_id, item_index)
-            };
+            })
+            .join()
+            .unwrap_or_else(|_| Err("Delete thread panicked".to_string()));
 
             let _ = cx.update(|cx| {
                 let _ = this.update(cx, |this, cx| {
@@ -598,10 +612,13 @@ impl DevSweep {
         let backend = self.backend.clone();
 
         cx.spawn(|this, mut cx| async move {
-            let result = {
+            // Run blocking clear in a separate thread to keep UI responsive
+            let result = std::thread::spawn(move || {
                 let mut backend = backend.lock().unwrap();
                 backend.clear_all_quarantine()
-            };
+            })
+            .join()
+            .unwrap_or_else(|_| Err("Clear thread panicked".to_string()));
 
             let _ = cx.update(|cx| {
                 let _ = this.update(cx, |this, cx| {
@@ -833,5 +850,126 @@ impl DevSweep {
             }
         })
         .detach();
+    }
+
+    // ==================== Size Filter Actions ====================
+
+    /// Toggle the size filter dropdown visibility
+    pub fn toggle_size_filter_dropdown(&mut self, _cx: &mut ViewContext<Self>) {
+        self.size_filter_dropdown_open = !self.size_filter_dropdown_open;
+    }
+
+    /// Close the size filter dropdown
+    pub fn close_size_filter_dropdown(&mut self, _cx: &mut ViewContext<Self>) {
+        self.size_filter_dropdown_open = false;
+    }
+
+    /// Set the size filter and apply it to the current results
+    pub fn set_size_filter(&mut self, filter: SizeFilter, _cx: &mut ViewContext<Self>) {
+        self.size_filter = filter;
+        self.size_filter_dropdown_open = false;
+        self.apply_size_filter();
+    }
+
+    /// Apply the current size filter to all_items and rebuild filtered views
+    pub fn apply_size_filter(&mut self) {
+        let threshold = self.size_filter.threshold_bytes();
+
+        // Filter items based on size threshold
+        self.filtered_items = self
+            .all_items
+            .iter()
+            .filter(|item| item.size >= threshold)
+            .cloned()
+            .collect();
+
+        // Rebuild filtered super categories
+        self.build_filtered_super_categories();
+    }
+
+    /// Build filtered super categories based on the current size filter
+    fn build_filtered_super_categories(&mut self) {
+        self.filtered_super_categories.clear();
+
+        let threshold = self.size_filter.threshold_bytes();
+
+        for super_type in SuperCategoryType::all() {
+            // Find all category indices that belong to this super category
+            // and have items that pass the filter
+            let category_indices: Vec<usize> = self
+                .categories
+                .iter()
+                .enumerate()
+                .filter(|(idx, cat)| {
+                    cat.super_category == super_type && {
+                        // Check if any items in this category pass the filter
+                        self.all_items
+                            .iter()
+                            .any(|item| item.category_index == *idx && item.size >= threshold)
+                    }
+                })
+                .map(|(idx, _)| idx)
+                .collect();
+
+            // Skip if no categories have items passing the filter
+            if category_indices.is_empty() {
+                continue;
+            }
+
+            // Calculate totals for filtered items only
+            let mut total_size: u64 = 0;
+            let mut item_count: i32 = 0;
+
+            for &cat_idx in &category_indices {
+                for item in &self.all_items {
+                    if item.category_index == cat_idx && item.size >= threshold {
+                        total_size += item.size;
+                        item_count += 1;
+                    }
+                }
+            }
+
+            // Check if all categories in this super category are checked
+            let all_checked = category_indices
+                .iter()
+                .all(|&idx| self.categories[idx].checked);
+
+            self.filtered_super_categories.push(SuperCategoryItem {
+                super_type,
+                name: super_type.name().into(),
+                icon: super_type.icon().into(),
+                total_size,
+                size_str: utils::format_size(total_size).into(),
+                item_count,
+                category_count: category_indices.len() as i32,
+                checked: all_checked,
+                expanded: self
+                    .super_categories
+                    .iter()
+                    .find(|sc| sc.super_type == super_type)
+                    .map(|sc| sc.expanded)
+                    .unwrap_or(false),
+                category_indices,
+            });
+        }
+    }
+
+    /// Get the filtered item count for a category
+    pub fn get_filtered_item_count(&self, cat_idx: usize) -> i32 {
+        let threshold = self.size_filter.threshold_bytes();
+        self.all_items
+            .iter()
+            .filter(|item| item.category_index == cat_idx && item.size >= threshold)
+            .count() as i32
+    }
+
+    /// Get the filtered total size for a category
+    pub fn get_filtered_category_size(&self, cat_idx: usize) -> u64 {
+        let threshold = self.size_filter.threshold_bytes();
+        self.all_items
+            .iter()
+            .filter(|item| item.category_index == cat_idx && item.size >= threshold)
+            .map(|item| item.size)
+            .sum()
     }
 }
