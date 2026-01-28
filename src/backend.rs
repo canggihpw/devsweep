@@ -2,6 +2,7 @@ use crate::checkers;
 use crate::cleanup_history::{CleanupHistory, CleanupItemRecord, CleanupRecord};
 use crate::custom_paths;
 use crate::scan_cache::{PathTracker, ScanCache};
+use crate::trends::{StorageSnapshot, TrendData, TrendTimeRange, TrendsHistory};
 use crate::types::{CheckResult, CleanupItem};
 use crate::utils::format_size;
 use rayon::prelude::*;
@@ -40,6 +41,7 @@ pub struct StorageBackend {
     pub categories: HashMap<String, CategoryData>,
     pub scan_cache: ScanCache,
     pub cleanup_history: CleanupHistory,
+    pub trends_history: TrendsHistory,
 }
 
 impl StorageBackend {
@@ -48,6 +50,7 @@ impl StorageBackend {
             categories: HashMap::new(),
             scan_cache: ScanCache::load(),
             cleanup_history: CleanupHistory::load(),
+            trends_history: TrendsHistory::load(),
         }
     }
 
@@ -155,7 +158,28 @@ impl StorageBackend {
         // Save cache
         let _ = self.scan_cache.save();
 
+        // Record snapshot for trends tracking
+        self.record_trends_snapshot();
+
         final_results
+    }
+
+    /// Record a snapshot of current storage state for trends tracking
+    fn record_trends_snapshot(&mut self) {
+        let total_reclaimable = self.get_total_reclaimable();
+
+        let category_sizes: HashMap<String, u64> = self
+            .categories
+            .iter()
+            .map(|(name, data)| (name.clone(), data.total_size))
+            .collect();
+
+        // Get current disk available space
+        let disk_available = fs2::statvfs("/").ok().map(|stat| stat.available_space());
+
+        let snapshot = StorageSnapshot::new(total_reclaimable, category_sizes, disk_available);
+        self.trends_history.add_snapshot(snapshot);
+        let _ = self.trends_history.save();
     }
 
     pub fn get_total_reclaimable(&self) -> u64 {
@@ -261,8 +285,15 @@ impl StorageBackend {
         }
 
         // Add record to history
+        let space_freed = record.total_size;
         self.cleanup_history.add_record(record);
         let _ = self.cleanup_history.save();
+
+        // Record space freed in trends history
+        if space_freed > 0 {
+            self.trends_history.record_cleanup(space_freed);
+            let _ = self.trends_history.save();
+        }
 
         // Invalidate cache for affected categories
         self.invalidate_cache_for_items(items);
@@ -472,6 +503,29 @@ impl StorageBackend {
     /// Get quarantine statistics
     pub fn get_quarantine_stats(&self) -> crate::cleanup_history::HistoryStats {
         self.cleanup_history.stats()
+    }
+
+    /// Get trend data for the specified time range
+    pub fn get_trend_data(&self, range: TrendTimeRange) -> TrendData {
+        self.trends_history.get_trend_data(range)
+    }
+
+    /// Get per-category trend data
+    pub fn get_category_trends(
+        &self,
+        range: TrendTimeRange,
+    ) -> Vec<crate::trends::CategoryTrendData> {
+        self.trends_history.get_category_trends(range)
+    }
+
+    /// Check if there's sufficient trend data for visualization
+    pub fn has_trend_data(&self) -> bool {
+        self.trends_history.has_sufficient_data()
+    }
+
+    /// Get the number of trend snapshots
+    pub fn trend_snapshot_count(&self) -> usize {
+        self.trends_history.snapshot_count()
     }
 }
 

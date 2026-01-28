@@ -1,5 +1,6 @@
 use crate::backend::{CategoryData, StorageBackend};
 use crate::custom_paths::{CustomPath, CustomPathsConfig};
+use crate::trends::{CategoryTrendData, TrendData, TrendTimeRange};
 use crate::types;
 use crate::ui::sidebar::Tab;
 use crate::ui::ThemeMode;
@@ -223,6 +224,8 @@ pub struct DevSweep {
     pub is_cleaning: bool,
     pub status_text: SharedString,
     pub storage_available: SharedString,
+    pub storage_total: u64,
+    pub storage_used_fraction: f32,
     pub total_reclaimable: SharedString,
     pub selected_items_count: i32,
     pub selected_items_size: SharedString,
@@ -252,6 +255,12 @@ pub struct DevSweep {
     pub filtered_items: Vec<CleanupItemData>,
     /// Filtered super categories (rebuilt when filter changes)
     pub filtered_super_categories: Vec<SuperCategoryItem>,
+    // Trends state
+    pub trend_time_range: TrendTimeRange,
+    pub trend_data: Option<TrendData>,
+    pub category_trends: Vec<CategoryTrendData>,
+    pub has_trend_data: bool,
+    pub trend_snapshot_count: usize,
 }
 
 impl Default for DevSweep {
@@ -276,11 +285,19 @@ impl DevSweep {
         cache_ttls.sort_by(|a, b| a.category.cmp(&b.category));
 
         // Get initial storage info
-        let storage_available = if let Ok(stat) = fs2::statvfs("/") {
-            utils::format_size(stat.available_space()).into()
-        } else {
-            "Unknown".into()
-        };
+        let (storage_available, storage_total, storage_used_fraction) =
+            if let Ok(stat) = fs2::statvfs("/") {
+                let available = stat.available_space();
+                let total = stat.total_space();
+                let used_fraction = if total > 0 {
+                    1.0 - (available as f32 / total as f32)
+                } else {
+                    0.0
+                };
+                (utils::format_size(available).into(), total, used_fraction)
+            } else {
+                ("Unknown".into(), 0, 0.0)
+            };
 
         Self {
             backend,
@@ -290,6 +307,8 @@ impl DevSweep {
             is_cleaning: false,
             status_text: "Click 'Scan' to analyze your storage".into(),
             storage_available,
+            storage_total,
+            storage_used_fraction,
             total_reclaimable: "0 B".into(),
             selected_items_count: 0,
             selected_items_size: "0 B".into(),
@@ -317,12 +336,26 @@ impl DevSweep {
             size_filter_dropdown_open: false,
             filtered_items: Vec::new(),
             filtered_super_categories: Vec::new(),
+            // Trends state
+            trend_time_range: TrendTimeRange::default(),
+            trend_data: None,
+            category_trends: Vec::new(),
+            has_trend_data: false,
+            trend_snapshot_count: 0,
         }
     }
 
     pub fn update_storage_info(&mut self) {
         if let Ok(stat) = fs2::statvfs("/") {
-            self.storage_available = utils::format_size(stat.available_space()).into();
+            let available = stat.available_space();
+            let total = stat.total_space();
+            self.storage_available = utils::format_size(available).into();
+            self.storage_total = total;
+            self.storage_used_fraction = if total > 0 {
+                1.0 - (available as f32 / total as f32)
+            } else {
+                0.0
+            };
         }
     }
 }

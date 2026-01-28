@@ -153,6 +153,8 @@ impl DevSweep {
             self.refresh_quarantine();
         } else if tab == Tab::Settings {
             self.refresh_cache_ttls();
+        } else if tab == Tab::Trends {
+            self.refresh_trends_data();
         }
     }
 

@@ -16,14 +16,16 @@ impl Render for DevSweep {
             .bg(Theme::base(self.theme_mode))
             // Sidebar
             .child(self.render_sidebar(cx))
-            // Main content area
+            // Main content area with left margin for breathing room from sidebar
             .child(
                 div()
                     .flex_1()
                     .h_full()
                     .overflow_hidden()
+                    .pl_2() // Add left padding to separate content from sidebar
                     .child(match active_tab {
                         Tab::Scan => self.render_scan_tab(cx),
+                        Tab::Trends => self.render_trends_tab(cx),
                         Tab::Quarantine => self.render_quarantine_tab(cx),
                         Tab::Settings => self.render_settings_tab(cx),
                         Tab::About => self.render_about_tab(cx),
@@ -36,6 +38,7 @@ impl DevSweep {
     pub fn render_sidebar(&mut self, cx: &mut ViewContext<Self>) -> Div {
         let active_tab = self.active_tab;
         let storage_available = self.storage_available.clone();
+        let storage_used_fraction = self.storage_used_fraction;
 
         div()
             .w(px(200.0))
@@ -92,11 +95,12 @@ impl DevSweep {
                     .flex_col()
                     .gap_1()
                     .child(self.sidebar_item(Tab::Scan, active_tab == Tab::Scan, cx))
+                    .child(self.sidebar_item(Tab::Trends, active_tab == Tab::Trends, cx))
                     .child(self.sidebar_item(Tab::Quarantine, active_tab == Tab::Quarantine, cx))
                     .child(self.sidebar_item(Tab::Settings, active_tab == Tab::Settings, cx))
                     .child(self.sidebar_item(Tab::About, active_tab == Tab::About, cx)),
             )
-            // Theme toggle and storage info at bottom
+            // Storage info and theme toggle at bottom
             .child(
                 div()
                     .w_full()
@@ -106,65 +110,92 @@ impl DevSweep {
                     .flex()
                     .flex_col()
                     .gap_3()
-                    // Theme toggle
-                    .child(
-                        div()
-                            .id("theme-toggle")
-                            .w_full()
-                            .px_3()
-                            .py_2()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .rounded_md()
-                            .cursor_pointer()
-                            .bg(Theme::surface0(self.theme_mode))
-                            .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-                            .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
-                            .on_click(cx.listener(|this, _event, cx| {
-                                this.theme_mode = this.theme_mode.toggle();
-                                cx.notify();
-                            }))
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(div().text_sm().child(if self.theme_mode.is_dark() {
-                                        "🌙"
-                                    } else {
-                                        "☀️"
-                                    }))
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(Theme::text(self.theme_mode))
-                                            .child(if self.theme_mode.is_dark() {
-                                                "Dark Mode"
-                                            } else {
-                                                "Light Mode"
-                                            }),
-                                    ),
-                            ),
-                    )
-                    // Storage info
+                    // Storage info with progress bar
                     .child(
                         div()
                             .flex()
                             .flex_col()
-                            .gap_1()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(Theme::subtext0(self.theme_mode))
+                                            .child("Available Storage"),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .text_color(Theme::green(self.theme_mode))
+                                            .child(storage_available),
+                                    ),
+                            )
+                            // Storage progress bar
+                            .child(
+                                div()
+                                    .w_full()
+                                    .h(px(4.0))
+                                    .bg(Theme::surface1(self.theme_mode))
+                                    .rounded_full()
+                                    .child(
+                                        div()
+                                            .h_full()
+                                            .w(relative(storage_used_fraction))
+                                            .bg(if storage_used_fraction > 0.9 {
+                                                Theme::red(self.theme_mode)
+                                            } else if storage_used_fraction > 0.75 {
+                                                Theme::yellow(self.theme_mode)
+                                            } else {
+                                                Theme::green(self.theme_mode)
+                                            })
+                                            .rounded_full(),
+                                    ),
+                            ),
+                    )
+                    // Compact theme toggle (icon-only style)
+                    .child(
+                        div()
+                            .id("theme-toggle")
+                            .w_full()
+                            .flex()
+                            .items_center()
+                            .justify_between()
                             .child(
                                 div()
                                     .text_xs()
                                     .text_color(Theme::subtext0(self.theme_mode))
-                                    .child("Available Storage"),
+                                    .child("Theme"),
                             )
                             .child(
                                 div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(Theme::green(self.theme_mode))
-                                    .child(storage_available),
+                                    .id("theme-toggle-btn")
+                                    .px_2()
+                                    .py_1()
+                                    .rounded_md()
+                                    .cursor_pointer()
+                                    .bg(Theme::surface0(self.theme_mode))
+                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                    .active(|style| {
+                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                    })
+                                    .on_click(cx.listener(|this, _event, cx| {
+                                        this.theme_mode = this.theme_mode.toggle();
+                                        cx.notify();
+                                    }))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .child(if self.theme_mode.is_dark() {
+                                                "🌙"
+                                            } else {
+                                                "☀️"
+                                            }),
+                                    ),
                             ),
                     ),
             )

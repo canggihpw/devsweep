@@ -120,13 +120,17 @@ impl DevSweep {
                                                 .child("Scan"),
                                         ),
                                 )
+                                // Full Rescan as a proper secondary outlined button
                                 .child(
                                     div()
                                         .id("force-rescan-btn")
-                                        .px_2()
+                                        .px_3()
                                         .py_2()
+                                        .rounded_md()
+                                        .border_1()
+                                        .border_color(Theme::surface2(self.theme_mode))
                                         .cursor_pointer()
-                                        .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
+                                        .hover(|style| style.bg(Theme::surface0(self.theme_mode)).border_color(Theme::blue(self.theme_mode)))
                                         .active(|style| {
                                             style.bg(Theme::surface1(self.theme_mode)).opacity(0.9)
                                         })
@@ -137,15 +141,15 @@ impl DevSweep {
                                         }))
                                         .child(
                                             div()
-                                                .text_xs()
-                                                .text_color(Theme::subtext0(self.theme_mode))
+                                                .text_sm()
+                                                .text_color(Theme::text(self.theme_mode))
                                                 .child("Full Rescan"),
                                         ),
                                 )
                             }),
                     ),
             )
-            // Stats bar
+            // Stats bar - reorganized: stats on left, all controls on right
             .child(
                 div()
                     .w_full()
@@ -155,17 +159,12 @@ impl DevSweep {
                     .flex()
                     .items_center()
                     .justify_between()
+                    // Left side: Statistics
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_6()
-                            // Size filter button
-                            .child(self.render_size_filter_button(
-                                size_filter,
-                                size_filter_dropdown_open,
-                                cx,
-                            ))
                             .child(
                                 div()
                                     .flex()
@@ -176,9 +175,9 @@ impl DevSweep {
                                             .text_sm()
                                             .text_color(Theme::subtext0(self.theme_mode))
                                             .child(if size_filter == SizeFilter::All {
-                                                "Total Reclaimable:"
+                                                "Reclaimable:"
                                             } else {
-                                                "Filtered Total:"
+                                                "Filtered:"
                                             }),
                                     )
                                     .child(
@@ -212,15 +211,30 @@ impl DevSweep {
                                     ),
                             ),
                     )
+                    // Right side: All controls grouped together
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
+                            // Size filter button
+                            .child(self.render_size_filter_button(
+                                size_filter,
+                                size_filter_dropdown_open,
+                                cx,
+                            ))
+                            // Separator
+                            .child(
+                                div()
+                                    .w(px(1.0))
+                                    .h(px(24.0))
+                                    .bg(Theme::surface1(self.theme_mode))
+                                    .mx_1(),
+                            )
                             .child(
                                 div()
                                     .id("select-all-btn")
-                                    .px_4()
+                                    .px_3()
                                     .py_2()
                                     .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
@@ -243,7 +257,7 @@ impl DevSweep {
                             .child(
                                 div()
                                     .id("deselect-all-btn")
-                                    .px_4()
+                                    .px_3()
                                     .py_2()
                                     .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
@@ -260,7 +274,7 @@ impl DevSweep {
                                         div()
                                             .text_sm()
                                             .text_color(Theme::text(self.theme_mode))
-                                            .child("Deselect All"),
+                                            .child("Deselect"),
                                     ),
                             )
                             .when(selected_count > 0 && !is_cleaning, |d| {
@@ -290,17 +304,20 @@ impl DevSweep {
                                         ),
                                 )
                             })
+                            // Improved disabled button with better contrast
                             .when(selected_count == 0 || is_cleaning, |d| {
                                 d.child(
                                     div()
                                         .px_4()
                                         .py_2()
-                                        .bg(Theme::surface1(self.theme_mode))
+                                        .bg(Theme::surface0(self.theme_mode))
                                         .rounded_md()
+                                        .border_1()
+                                        .border_color(Theme::surface1(self.theme_mode))
                                         .child(
                                             div()
                                                 .text_sm()
-                                                .text_color(Theme::overlay0(self.theme_mode))
+                                                .text_color(Theme::subtext0(self.theme_mode))
                                                 .child("Clean Selected"),
                                         ),
                                 )
@@ -339,21 +356,46 @@ impl DevSweep {
             })
     }
 
-    pub fn empty_state(&self, message: &str) -> Div {
+    pub fn empty_state(&self, _message: &str) -> Div {
         div()
             .w_full()
-            .py_8()
+            .flex_1()
             .flex()
             .flex_col()
             .items_center()
             .justify_center()
-            .gap_2()
-            .child(div().text_2xl().child("📭"))
+            .gap_4()
             .child(
                 div()
-                    .text_sm()
-                    .text_color(Theme::subtext0(self.theme_mode))
-                    .child(message.to_string()),
+                    .text_3xl()
+                    .child("🧹"),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(Theme::text(self.theme_mode))
+                            .child("Ready to Sweep?"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(Theme::subtext0(self.theme_mode))
+                            .max_w(px(320.0))
+                            .child("DevSweep analyzes your projects to find reclaimable space."),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(Theme::subtext0(self.theme_mode))
+                            .child("Press Scan to begin."),
+                    ),
             )
     }
 

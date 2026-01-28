@@ -42,6 +42,15 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 - **Scrollable History**: Navigate through long cleanup history
 - **Smart Cleanup**: Automatically removes old quarantine when exceeding 10GB
 
+### 📈 Trends Tab
+- **Storage Trends**: Visualize space usage patterns over time
+- **Time Range Filters**: View data for Week, Month, Quarter, or All Time
+- **Summary Cards**: Space freed, net change, and cleanup count at a glance
+- **Bar Chart Visualization**: Visual representation of storage snapshots
+- **Category Breakdown**: See which categories contribute most to storage
+- **Automatic Tracking**: Snapshots recorded after each scan
+- **Persistent History**: Trend data saved across app sessions
+
 ### ⚙️ Settings Tab
 - **Cache TTL Configuration**: Customize how long scan results are cached per category
 - **Per-Category Control**: Set different TTL values for each tool category
@@ -315,6 +324,7 @@ devsweep/
 │   ├── cache_settings.rs    # Settings persistence
 │   ├── update_checker.rs    # GitHub releases API, version comparison
 │   ├── custom_paths.rs      # User-defined custom scan paths
+│   ├── trends.rs            # Storage trends tracking and history
 │   ├── app/                 # GPUI application components
 │   │   ├── mod.rs           # Module exports
 │   │   ├── state.rs         # Application state (DevSweep struct, SuperCategoryType)
@@ -323,6 +333,7 @@ devsweep/
 │   │   └── tabs/            # Tab-specific UI
 │   │       ├── mod.rs
 │   │       ├── scan_tab.rs
+│   │       ├── trends_tab.rs
 │   │       ├── quarantine_tab.rs
 │   │       ├── settings_tab.rs
 │   │       └── about_tab.rs
@@ -434,8 +445,9 @@ devsweep/
 
 - **Scan Cache**: `~/Library/Caches/development-cleaner/scan_cache.json`
 - **Cleanup History**: `~/Library/Caches/development-cleaner/cleanup_history.json`
+- **Trends History**: `~/Library/Caches/development-cleaner/trends_history.json`
 - **Settings**: `~/Library/Application Support/development-cleaner/cache_settings.json`
-- **Custom Paths**: `~/.config/devsweep/custom_paths.json`
+- **Custom Paths**: `~/Library/Application Support/devsweep/custom_paths.json`
 - **Quarantine Files**: `~/Library/Caches/development-cleaner/quarantine/`
 
 ## Troubleshooting
@@ -576,20 +588,46 @@ xcrun stapler staple "DevSweep-0.2.0.dmg"
 - [x] **Super categories**: Logical grouping of scan results (Development Tools, Package Managers, etc.)
 - [x] **Size threshold filters**: Filter scan results by size (> 1MB, > 10MB, > 100MB, > 500MB, > 1GB)
 - [x] **Non-blocking UI**: Background processing for long-running operations
+- [x] **Storage trends**: Visualize space usage over time with trend charts
+  - Track storage consumption patterns across scans
+  - View space freed and net changes over time
+  - Time range filters (Week, Month, Quarter, All Time)
+  - Category-level trend breakdown
 
 ### Planned Features
 
-- [ ] **Scheduled cleanups**: Automatic cleaning on schedule
-- [ ] **Export reports**: Save scan results as CSV/JSON
-- [ ] **Cloud storage cleanup**: Google Drive, Dropbox, iCloud caches
-- [ ] **Smart recommendations**: AI-based cleanup suggestions
-- [ ] **Menu bar mode**: Quick access from menu bar
-- [ ] **Whitelist/blacklist**: Exclude specific paths
-- [ ] **Cleanup profiles**: Save and load cleanup configurations
-- [ ] **Language server caches**: LSP data, TypeScript servers
-- [ ] **Build artifact cleanup**: Old build outputs, artifacts
+#### Developer Workflow
+- [ ] **Language server caches**: Clean LSP data, TypeScript servers, Rust Analyzer caches
+- [ ] **Build artifact cleanup**: Old build outputs, .o files, intermediate artifacts
+- [ ] **Container image pruning**: Smart Docker/Podman image cleanup based on age and usage
+- [ ] **Dependency audit**: Identify outdated or unused dependencies across projects
+- [ ] **Project archiver**: Archive inactive projects (compress node_modules, target dirs)
+
+#### Automation & Scheduling
+- [ ] **Scheduled cleanups**: Automatic cleaning on schedule (daily, weekly, monthly)
 - [ ] **Trash schedule**: Auto-empty trash older than X days
-- [ ] **Storage trends**: Visualize space usage over time
+- [ ] **Cleanup profiles**: Save and load cleanup configurations for different workflows
+- [ ] **CLI mode**: Run scans and cleanups from terminal for CI/CD integration
+
+#### Analysis & Reporting
+- [ ] **Export reports**: Save scan results as CSV/JSON for tracking
+- [ ] **Smart recommendations**: AI-based cleanup suggestions based on usage patterns
+- [ ] **Disk usage heatmap**: Visual representation of storage consumption by directory
+- [ ] **Project size tracking**: Monitor how project sizes change over time
+
+#### Integration & Access
+- [ ] **Menu bar mode**: Quick access from menu bar with storage summary
+- [ ] **Whitelist/blacklist**: Exclude specific paths from scans
+- [ ] **Cloud storage cleanup**: Google Drive, Dropbox, iCloud caches
+- [ ] **Spotlight integration**: Quick launch and search via Spotlight
+
+#### Developer-Specific Cleanups
+- [ ] **Test coverage artifacts**: Clean old coverage reports (.nyc_output, coverage/)
+- [ ] **Debug symbols**: Remove .dSYM files and debug artifacts
+- [ ] **Stale branches cleanup**: Interactive pruning of old Git branches
+- [ ] **Lock file deduplication**: Identify duplicate lock files across projects
+- [ ] **Virtual environment cleanup**: Find and remove orphaned venvs, conda envs
+- [ ] **Compiler cache management**: ccache, sccache cleanup with size limits
 
 ### Contributing
 

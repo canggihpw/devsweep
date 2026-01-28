@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Storage trends feature (new Trends tab)
+  - Track storage consumption patterns across scans
+  - View space freed and net changes over time
+  - Time range filters (Week, Month, Quarter, All Time)
+  - Bar chart visualization of storage snapshots
+  - Category-level trend breakdown with progress bars
+  - Automatic snapshot recording after each scan
+  - Persistent history saved to `~/Library/Caches/development-cleaner/trends_history.json`
 - Size threshold filters for scan results
   - Filter dropdown in scan tab stats bar
   - Options: All, > 1 MB, > 10 MB, > 100 MB, > 500 MB, > 1 GB
@@ -22,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - IDE checker tests (VSCode, JetBrains, Android Studio)
   - Homebrew checker tests (cache, cellar)
   - Extended Docker checker tests
+
+### Changed
+- Improved scan tab UI layout
+  - Stats on left, action buttons on right
+  - Full Rescan as secondary outlined button
+  - Better empty state messaging ("Ready to Sweep?")
+  - Improved disabled button contrast
+- Sidebar improvements
+  - Theme toggle shrunk to icon-only style
+  - Storage progress bar with color coding (green/yellow/red)
+  - Added margin between sidebar and content area
 
 ### Fixed
 - UI freezing during long-running scan and cleanup operations

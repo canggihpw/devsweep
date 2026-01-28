@@ -25,6 +25,7 @@ src/
 ├── single_instance.rs   # Unix socket for single-instance app
 ├── update_checker.rs    # GitHub releases API, version comparison
 ├── custom_paths.rs      # User-defined custom scan paths
+├── trends.rs            # Storage trends tracking and history
 ├── assets.rs            # Icon loading with rust-embed
 ├── app/
 │   ├── mod.rs           # Re-exports DevSweep
@@ -34,6 +35,7 @@ src/
 │   └── tabs/
 │       ├── mod.rs
 │       ├── scan_tab.rs      # Main scanning UI with super category grouping
+│       ├── trends_tab.rs    # Storage trends visualization
 │       ├── quarantine_tab.rs # Quarantine management
 │       ├── settings_tab.rs   # Cache TTL settings + custom paths
 │       └── about_tab.rs      # App info, update checker UI
@@ -206,12 +208,14 @@ pub fn check_something() -> CheckResult {
 
 ## File Locations
 
-- **Config/Cache files**: `~/.config/devsweep/` (created by the app)
+- **Cache files**: `~/Library/Caches/development-cleaner/`
   - `scan_cache.json` - Cached scan results
   - `cleanup_history.json` - Quarantine records
+  - `trends_history.json` - Storage trends data
+- **Config files**: `~/Library/Application Support/devsweep/`
   - `cache_settings.json` - TTL settings
   - `custom_paths.json` - User-defined scan paths
-- **Quarantine**: `~/.config/devsweep/quarantine/`
+- **Quarantine**: `~/Library/Caches/development-cleaner/quarantine/`
 - **Single instance socket**: `/tmp/devsweep-{uid}.sock`
 
 ## Dependencies (Key Ones)
@@ -295,6 +299,29 @@ Users can add custom directories to scan via Settings tab:
 - **UI**: Settings tab has "Custom Scan Paths" section with Browse/Add/Toggle/Remove
 - **Scanning**: `custom_paths::check_custom_paths()` is called alongside other checkers
 
+## Storage Trends System
+
+The trends module (`src/trends.rs`) tracks storage usage over time:
+- **StorageSnapshot**: Records total size and per-category sizes at scan time
+- **TrendsHistory**: Manages collection of snapshots with persistence
+- **TrendData**: Computed statistics (space freed, net change, cleanup count)
+- **TrendTimeRange**: Filter options (Week, Month, Quarter, AllTime)
+
+**Data flow**:
+1. After each scan, `backend.record_trends_snapshot()` creates a new snapshot
+2. Cleanup operations update trends via `record_cleanup_in_trends()`
+3. Trends tab queries `get_trend_data()` and `get_category_trends()`
+4. UI displays bar chart and category breakdown
+
+**State in DevSweep** (`src/app/state.rs`):
+```rust
+pub trend_time_range: TrendTimeRange,
+pub trend_data: Option<TrendData>,
+pub category_trends: Vec<CategoryTrendData>,
+pub has_trend_data: bool,
+pub trend_snapshot_count: usize,
+```
+
 ## Git Repository Cleanup
 
 The git checker (`src/checkers/git.rs`) scans for:
@@ -315,3 +342,4 @@ The git checker (`src/checkers/git.rs`) scans for:
 7. **Update checker uses ureq** - Blocking HTTP, must run in background thread
 8. **Super categories group related checkers** - TTL settings and scan results use same grouping
 9. **Category names must match** - `SuperCategoryType::from_category_name()` must match actual checker names
+10. **Trends auto-record** - Snapshots are recorded automatically after each scan completion
