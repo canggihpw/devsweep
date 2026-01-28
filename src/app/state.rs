@@ -251,6 +251,8 @@ pub struct DevSweep {
     // Size filter state
     pub size_filter: SizeFilter,
     pub size_filter_dropdown_open: bool,
+    // Scan dropdown state
+    pub scan_dropdown_open: bool,
     /// Filtered items (items that pass the current size filter)
     pub filtered_items: Vec<CleanupItemData>,
     /// Filtered super categories (rebuilt when filter changes)
@@ -334,6 +336,8 @@ impl DevSweep {
             // Size filter state
             size_filter: SizeFilter::default(),
             size_filter_dropdown_open: false,
+            // Scan dropdown state
+            scan_dropdown_open: false,
             filtered_items: Vec::new(),
             filtered_super_categories: Vec::new(),
             // Trends state

@@ -48,6 +48,14 @@ impl Theme {
         }
     }
 
+    /// Sidebar background - very light gray for native macOS feel
+    pub fn sidebar_bg(mode: ThemeMode) -> Rgba {
+        match mode {
+            ThemeMode::Light => rgb(0xf9fafb), // Very light gray
+            ThemeMode::Dark => rgb(0x1e1e2e),  // Keep dark for dark mode
+        }
+    }
+
     pub fn crust(mode: ThemeMode) -> Rgba {
         match mode {
             ThemeMode::Light => rgb(0xdce0e8),

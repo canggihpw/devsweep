@@ -854,12 +854,23 @@ impl DevSweep {
         .detach();
     }
 
-    // ==================== Size Filter Actions ====================
+    // ==================== Dropdown Actions ====================
 
     /// Toggle the size filter dropdown visibility
     pub fn toggle_size_filter_dropdown(&mut self, _cx: &mut ViewContext<Self>) {
         self.size_filter_dropdown_open = !self.size_filter_dropdown_open;
+        // Close other dropdowns
+        self.scan_dropdown_open = false;
     }
+
+    /// Toggle the scan dropdown visibility
+    pub fn toggle_scan_dropdown(&mut self, _cx: &mut ViewContext<Self>) {
+        self.scan_dropdown_open = !self.scan_dropdown_open;
+        // Close other dropdowns
+        self.size_filter_dropdown_open = false;
+    }
+
+    // ==================== Size Filter Actions ====================
 
     /// Close the size filter dropdown
     pub fn close_size_filter_dropdown(&mut self, _cx: &mut ViewContext<Self>) {

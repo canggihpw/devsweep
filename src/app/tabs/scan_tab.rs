@@ -16,6 +16,7 @@ impl DevSweep {
         let items = self.all_items.clone();
         let size_filter = self.size_filter;
         let size_filter_dropdown_open = self.size_filter_dropdown_open;
+        let scan_dropdown_open = self.scan_dropdown_open;
 
         // Use filtered super categories when a filter is active
         let super_categories = if size_filter == SizeFilter::All {
@@ -39,21 +40,21 @@ impl DevSweep {
             .flex()
             .flex_col()
             .bg(Theme::base(self.theme_mode))
-            // Header
+            // Unified header toolbar (merged title and controls)
             .child(
                 div()
                     .w_full()
-                    .p_4()
+                    .px_4()
+                    .py_3()
                     .flex()
                     .items_center()
                     .justify_between()
-                    .border_b_1()
-                    .border_color(Theme::surface0(self.theme_mode))
+                    // Left: Title and status
                     .child(
                         div()
                             .flex()
                             .items_center()
-                            .gap_4()
+                            .gap_3()
                             .child(
                                 div()
                                     .text_xl()
@@ -61,18 +62,20 @@ impl DevSweep {
                                     .text_color(Theme::text(self.theme_mode))
                                     .child("Scan & Clean"),
                             )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(Theme::subtext0(self.theme_mode))
-                                    .child(status_text),
-                            ),
+                            .when(!status_text.is_empty() && status_text != "Ready", |d| {
+                                d.child(
+                                    div()
+                                        .text_sm()
+                                        .text_color(Theme::subtext0(self.theme_mode))
+                                        .child(status_text),
+                                )
+                            }),
                     )
+                    // Right: Split Scan button
                     .child(
                         div()
                             .flex()
                             .items_center()
-                            .gap_2()
                             .when(is_scanning || is_cleaning, |d| {
                                 d.child(
                                     div()
@@ -93,91 +96,56 @@ impl DevSweep {
                                 )
                             })
                             .when(!is_scanning && !is_cleaning, |d| {
-                                d.child(
-                                    div()
-                                        .id("scan-btn")
-                                        .px_4()
-                                        .py_2()
-                                        .bg(Theme::blue(self.theme_mode))
-                                        .rounded_md()
-                                        .cursor_pointer()
-                                        .hover(|style| style.bg(Theme::sapphire(self.theme_mode)))
-                                        .active(|style| {
-                                            style
-                                                .bg(Theme::blue_active(self.theme_mode))
-                                                .opacity(0.9)
-                                        })
-                                        .on_click(cx.listener(|this, _event, cx| {
-                                            if !this.is_scanning && !this.is_cleaning {
-                                                this.start_scan(true, cx);
-                                            }
-                                        }))
-                                        .child(
-                                            div()
-                                                .text_sm()
-                                                .text_color(Theme::crust(self.theme_mode))
-                                                .font_weight(FontWeight::SEMIBOLD)
-                                                .child("Scan"),
-                                        ),
-                                )
-                                // Full Rescan as a proper secondary outlined button
-                                .child(
-                                    div()
-                                        .id("force-rescan-btn")
-                                        .px_3()
-                                        .py_2()
-                                        .rounded_md()
-                                        .border_1()
-                                        .border_color(Theme::surface2(self.theme_mode))
-                                        .cursor_pointer()
-                                        .hover(|style| style.bg(Theme::surface0(self.theme_mode)).border_color(Theme::blue(self.theme_mode)))
-                                        .active(|style| {
-                                            style.bg(Theme::surface1(self.theme_mode)).opacity(0.9)
-                                        })
-                                        .on_click(cx.listener(|this, _event, cx| {
-                                            if !this.is_scanning && !this.is_cleaning {
-                                                this.start_scan(false, cx);
-                                            }
-                                        }))
-                                        .child(
-                                            div()
-                                                .text_sm()
-                                                .text_color(Theme::text(self.theme_mode))
-                                                .child("Full Rescan"),
-                                        ),
-                                )
+                                d.child(self.render_split_scan_button(scan_dropdown_open, cx))
                             }),
                     ),
             )
-            // Stats bar - reorganized: stats on left, all controls on right
+            // Divider line
+            .child(
+                div()
+                    .w_full()
+                    .h(px(1.0))
+                    .bg(Theme::surface0(self.theme_mode)),
+            )
+            // Control bar (filter left, stats center, actions right)
             .child(
                 div()
                     .w_full()
                     .px_4()
                     .py_3()
-                    .bg(Theme::mantle(self.theme_mode))
                     .flex()
                     .items_center()
                     .justify_between()
-                    // Left side: Statistics
+                    // Left: Filter dropdown
+                    .child(self.render_size_filter_button(
+                        size_filter,
+                        size_filter_dropdown_open,
+                        cx,
+                    ))
+                    // Center: Stats as pills
                     .child(
                         div()
                             .flex()
                             .items_center()
-                            .gap_6()
+                            .gap_3()
+                            // Reclaimable pill
                             .child(
                                 div()
+                                    .px_3()
+                                    .py_1()
+                                    .bg(Theme::surface0(self.theme_mode))
+                                    .rounded_full()
                                     .flex()
                                     .items_center()
                                     .gap_2()
                                     .child(
                                         div()
-                                            .text_sm()
+                                            .text_xs()
                                             .text_color(Theme::subtext0(self.theme_mode))
                                             .child(if size_filter == SizeFilter::All {
-                                                "Reclaimable:"
+                                                "Reclaimable"
                                             } else {
-                                                "Filtered:"
+                                                "Filtered"
                                             }),
                                     )
                                     .child(
@@ -188,60 +156,53 @@ impl DevSweep {
                                             .child(filtered_total),
                                     ),
                             )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(Theme::subtext0(self.theme_mode))
-                                            .child("Selected:"),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(Theme::blue(self.theme_mode))
-                                            .child(format!(
-                                                "{} items ({})",
-                                                selected_count, selected_size
-                                            )),
-                                    ),
-                            ),
+                            // Selected pill (only show if something selected)
+                            .when(selected_count > 0, |d| {
+                                d.child(
+                                    div()
+                                        .px_3()
+                                        .py_1()
+                                        .bg(Theme::blue_tint(self.theme_mode))
+                                        .rounded_full()
+                                        .flex()
+                                        .items_center()
+                                        .gap_2()
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(Theme::subtext0(self.theme_mode))
+                                                .child("Selected"),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_color(Theme::blue(self.theme_mode))
+                                                .child(format!(
+                                                    "{} ({})",
+                                                    selected_count, selected_size
+                                                )),
+                                        ),
+                                )
+                            }),
                     )
-                    // Right side: All controls grouped together
+                    // Right: Action buttons (ghost style for select/deselect, solid for clean)
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_2()
-                            // Size filter button
-                            .child(self.render_size_filter_button(
-                                size_filter,
-                                size_filter_dropdown_open,
-                                cx,
-                            ))
-                            // Separator
-                            .child(
-                                div()
-                                    .w(px(1.0))
-                                    .h(px(24.0))
-                                    .bg(Theme::surface1(self.theme_mode))
-                                    .mx_1(),
-                            )
+                            // Ghost button: Select All
                             .child(
                                 div()
                                     .id("select-all-btn")
                                     .px_3()
                                     .py_2()
-                                    .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                    .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
                                     .active(|style| {
-                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                        style.bg(Theme::surface1(self.theme_mode)).opacity(0.9)
                                     })
                                     .on_click(cx.listener(|this, _event, cx| {
                                         this.select_all(cx);
@@ -250,21 +211,21 @@ impl DevSweep {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(Theme::text(self.theme_mode))
+                                            .text_color(Theme::subtext0(self.theme_mode))
                                             .child("Select All"),
                                     ),
                             )
+                            // Ghost button: Deselect
                             .child(
                                 div()
                                     .id("deselect-all-btn")
                                     .px_3()
                                     .py_2()
-                                    .bg(Theme::surface0(self.theme_mode))
                                     .rounded_md()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                    .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
                                     .active(|style| {
-                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                        style.bg(Theme::surface1(self.theme_mode)).opacity(0.9)
                                     })
                                     .on_click(cx.listener(|this, _event, cx| {
                                         this.deselect_all(cx);
@@ -273,10 +234,11 @@ impl DevSweep {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(Theme::text(self.theme_mode))
+                                            .text_color(Theme::subtext0(self.theme_mode))
                                             .child("Deselect"),
                                     ),
                             )
+                            // Clean button (solid red when active, disabled otherwise)
                             .when(selected_count > 0 && !is_cleaning, |d| {
                                 d.child(
                                     div()
@@ -300,11 +262,11 @@ impl DevSweep {
                                                 .text_sm()
                                                 .text_color(Theme::crust(self.theme_mode))
                                                 .font_weight(FontWeight::SEMIBOLD)
-                                                .child("Clean Selected"),
+                                                .child("Clean"),
                                         ),
                                 )
                             })
-                            // Improved disabled button with better contrast
+                            // Disabled clean button
                             .when(selected_count == 0 || is_cleaning, |d| {
                                 d.child(
                                     div()
@@ -312,17 +274,22 @@ impl DevSweep {
                                         .py_2()
                                         .bg(Theme::surface0(self.theme_mode))
                                         .rounded_md()
-                                        .border_1()
-                                        .border_color(Theme::surface1(self.theme_mode))
                                         .child(
                                             div()
                                                 .text_sm()
-                                                .text_color(Theme::subtext0(self.theme_mode))
-                                                .child("Clean Selected"),
+                                                .text_color(Theme::overlay0(self.theme_mode))
+                                                .child("Clean"),
                                         ),
                                 )
                             }),
                     ),
+            )
+            // Divider line before content
+            .child(
+                div()
+                    .w_full()
+                    .h(px(1.0))
+                    .bg(Theme::surface0(self.theme_mode)),
             )
             // Super categories list
             .child(
@@ -332,7 +299,7 @@ impl DevSweep {
                     .w_full()
                     .overflow_y_scroll()
                     .child(if super_categories.is_empty() {
-                        self.empty_state("Click 'Scan' to analyze your storage")
+                        self.render_empty_state()
                     } else {
                         div().w_full().flex().flex_col().children(
                             super_categories
@@ -350,13 +317,114 @@ impl DevSweep {
                         )
                     }),
             )
-            // Size filter dropdown overlay (rendered last to appear on top)
+            // Dropdown overlays (rendered last to appear on top)
             .when(size_filter_dropdown_open, |d| {
                 d.child(self.render_size_filter_overlay(size_filter, cx))
             })
+            .when(scan_dropdown_open, |d| {
+                d.child(self.render_scan_dropdown_overlay(cx))
+            })
     }
 
-    pub fn empty_state(&self, _message: &str) -> Div {
+    /// Render the split scan button (main button + dropdown trigger)
+    fn render_split_scan_button(&self, is_open: bool, cx: &mut ViewContext<Self>) -> Div {
+        div()
+            .flex()
+            .items_center()
+            // Main scan button
+            .child(
+                div()
+                    .id("scan-btn")
+                    .px_4()
+                    .py_2()
+                    .bg(Theme::blue(self.theme_mode))
+                    .rounded_l_md()
+                    .cursor_pointer()
+                    .hover(|style| style.bg(Theme::blue_hover(self.theme_mode)))
+                    .active(|style| style.bg(Theme::blue_active(self.theme_mode)).opacity(0.9))
+                    .on_click(cx.listener(|this, _event, cx| {
+                        if !this.is_scanning && !this.is_cleaning {
+                            this.start_scan(true, cx);
+                        }
+                    }))
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(Theme::crust(self.theme_mode))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child("Scan"),
+                    ),
+            )
+            // Dropdown trigger
+            .child(
+                div()
+                    .id("scan-dropdown-btn")
+                    .px_2()
+                    .py_2()
+                    .bg(if is_open {
+                        Theme::blue_active(self.theme_mode)
+                    } else {
+                        Theme::blue(self.theme_mode)
+                    })
+                    .rounded_r_md()
+                    .border_l_1()
+                    .border_color(Theme::blue_active(self.theme_mode))
+                    .cursor_pointer()
+                    .hover(|style| style.bg(Theme::blue_hover(self.theme_mode)))
+                    .active(|style| style.bg(Theme::blue_active(self.theme_mode)).opacity(0.9))
+                    .on_click(cx.listener(|this, _event, cx| {
+                        this.toggle_scan_dropdown(cx);
+                        cx.notify();
+                    }))
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(Theme::crust(self.theme_mode))
+                            .child(if is_open { "▲" } else { "▼" }),
+                    ),
+            )
+    }
+
+    /// Render the scan dropdown overlay
+    fn render_scan_dropdown_overlay(&self, cx: &mut ViewContext<Self>) -> Div {
+        div()
+            .absolute()
+            .top(px(52.0))
+            .right(px(16.0))
+            .min_w(px(140.0))
+            .bg(Theme::base(self.theme_mode))
+            .border_1()
+            .border_color(Theme::surface1(self.theme_mode))
+            .rounded_md()
+            .shadow_lg()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .id("full-rescan-option")
+                    .px_3()
+                    .py_2()
+                    .cursor_pointer()
+                    .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
+                    .active(|style| style.bg(Theme::surface1(self.theme_mode)).opacity(0.9))
+                    .on_click(cx.listener(|this, _event, cx| {
+                        this.scan_dropdown_open = false;
+                        if !this.is_scanning && !this.is_cleaning {
+                            this.start_scan(false, cx);
+                        }
+                        cx.notify();
+                    }))
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(Theme::text(self.theme_mode))
+                            .child("Full Rescan"),
+                    ),
+            )
+    }
+
+    /// Render elegant empty state - centered with larger icon
+    pub fn render_empty_state(&self) -> Div {
         div()
             .w_full()
             .flex_1()
@@ -364,12 +432,26 @@ impl DevSweep {
             .flex_col()
             .items_center()
             .justify_center()
-            .gap_4()
+            .gap_6()
+            .pb_16() // Add bottom padding to visually center better
+            // Large icon
             .child(
                 div()
-                    .text_3xl()
-                    .child("🧹"),
+                    .w(px(80.0))
+                    .h(px(80.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded_2xl()
+                    .bg(Theme::surface0(self.theme_mode))
+                    .child(
+                        div()
+                            .text_color(Theme::subtext0(self.theme_mode))
+                            .child("🧹")
+                            .text_size(px(40.0)),
+                    ),
             )
+            // Text hierarchy
             .child(
                 div()
                     .flex()
@@ -381,22 +463,26 @@ impl DevSweep {
                             .text_lg()
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(Theme::text(self.theme_mode))
-                            .child("Ready to Sweep?"),
+                            .child("Ready to sweep?"),
                     )
                     .child(
                         div()
                             .text_sm()
                             .text_color(Theme::subtext0(self.theme_mode))
-                            .max_w(px(320.0))
-                            .child("DevSweep analyzes your projects to find reclaimable space."),
+                            .child("Click Scan to analyze your projects."),
                     )
                     .child(
                         div()
-                            .text_sm()
-                            .text_color(Theme::subtext0(self.theme_mode))
-                            .child("Press Scan to begin."),
+                            .text_xs()
+                            .text_color(Theme::overlay0(self.theme_mode))
+                            .child("Your cleanup results will appear here."),
                     ),
             )
+    }
+
+    // Keep the old method name for compatibility but redirect to new one
+    pub fn empty_state(&self, _message: &str) -> Div {
+        self.render_empty_state()
     }
 
     /// Render a super category section with its child categories
@@ -415,7 +501,7 @@ impl DevSweep {
             .flex()
             .flex_col()
             .border_b_1()
-            .border_color(Theme::surface1(self.theme_mode))
+            .border_color(Theme::surface0(self.theme_mode))
             // Super category header
             .child(
                 div()
@@ -429,7 +515,7 @@ impl DevSweep {
                     .flex()
                     .items_center()
                     .gap_3()
-                    .bg(Theme::mantle(self.theme_mode))
+                    .bg(Theme::base(self.theme_mode))
                     .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
                     .active(|style| style.bg(Theme::surface1(self.theme_mode)).opacity(0.9))
                     .cursor_pointer()
@@ -497,7 +583,7 @@ impl DevSweep {
                             .px_2()
                             .py_1()
                             .bg(Theme::surface0(self.theme_mode))
-                            .rounded_sm()
+                            .rounded_full()
                             .child(
                                 div()
                                     .text_xs()
@@ -626,8 +712,8 @@ impl DevSweep {
                         div()
                             .px_2()
                             .py_1()
-                            .bg(Theme::surface1(self.theme_mode))
-                            .rounded_sm()
+                            .bg(Theme::surface0(self.theme_mode))
+                            .rounded_full()
                             .child(
                                 div()
                                     .text_xs()
@@ -754,7 +840,7 @@ impl DevSweep {
                         .px_2()
                         .py_1()
                         .bg(Theme::yellow(self.theme_mode))
-                        .rounded_sm()
+                        .rounded_full()
                         .child(
                             div()
                                 .text_xs()
@@ -770,7 +856,7 @@ impl DevSweep {
                         .px_2()
                         .py_1()
                         .bg(Theme::green(self.theme_mode))
-                        .rounded_sm()
+                        .rounded_full()
                         .child(
                             div()
                                 .text_xs()
@@ -788,7 +874,7 @@ impl DevSweep {
             )
     }
 
-    /// Render the size filter button only (dropdown menu is rendered separately as overlay)
+    /// Render the size filter button (with light border and rounded corners)
     fn render_size_filter_button(
         &self,
         current_filter: SizeFilter,
@@ -799,7 +885,7 @@ impl DevSweep {
             .id("size-filter-btn")
             .px_3()
             .py_2()
-            .bg(Theme::surface0(self.theme_mode))
+            .bg(Theme::base(self.theme_mode))
             .rounded_md()
             .cursor_pointer()
             .border_1()
@@ -808,8 +894,8 @@ impl DevSweep {
             } else {
                 Theme::surface1(self.theme_mode)
             })
-            .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-            .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+            .hover(|style| style.border_color(Theme::surface2(self.theme_mode)))
+            .active(|style| style.bg(Theme::surface0(self.theme_mode)).opacity(0.9))
             .on_click(cx.listener(|this, _event, cx| {
                 this.toggle_size_filter_dropdown(cx);
                 cx.notify();
@@ -820,13 +906,6 @@ impl DevSweep {
             .child(
                 div()
                     .text_sm()
-                    .text_color(Theme::subtext0(self.theme_mode))
-                    .child("Filter:"),
-            )
-            .child(
-                div()
-                    .text_sm()
-                    .font_weight(FontWeight::SEMIBOLD)
                     .text_color(Theme::text(self.theme_mode))
                     .child(current_filter.label()),
             )
@@ -846,10 +925,10 @@ impl DevSweep {
     ) -> Div {
         div()
             .absolute()
-            .top(px(140.0)) // Position below header + stats bar
+            .top(px(110.0)) // Position below unified header
             .left(px(16.0))
-            .min_w(px(160.0))
-            .bg(Theme::surface0(self.theme_mode))
+            .min_w(px(140.0))
+            .bg(Theme::base(self.theme_mode))
             .border_1()
             .border_color(Theme::surface1(self.theme_mode))
             .rounded_md()
@@ -867,12 +946,12 @@ impl DevSweep {
                     .py_2()
                     .cursor_pointer()
                     .bg(if is_selected {
-                        Theme::surface1(self.theme_mode)
+                        Theme::surface0(self.theme_mode)
                     } else {
                         Theme::transparent()
                     })
-                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-                    .active(|style| style.bg(Theme::surface2(self.theme_mode)).opacity(0.9))
+                    .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
+                    .active(|style| style.bg(Theme::surface1(self.theme_mode)).opacity(0.9))
                     .on_click(cx.listener(move |this, _event, cx| {
                         this.set_size_filter(filter, cx);
                         cx.notify();

@@ -14,15 +14,14 @@ impl Render for DevSweep {
             .w_full()
             .h_full()
             .bg(Theme::base(self.theme_mode))
-            // Sidebar
+            // Sidebar (light gray background for native feel)
             .child(self.render_sidebar(cx))
-            // Main content area with left margin for breathing room from sidebar
+            // Main content area
             .child(
                 div()
                     .flex_1()
                     .h_full()
                     .overflow_hidden()
-                    .pl_2() // Add left padding to separate content from sidebar
                     .child(match active_tab {
                         Tab::Scan => self.render_scan_tab(cx),
                         Tab::Trends => self.render_trends_tab(cx),
@@ -43,7 +42,8 @@ impl DevSweep {
         div()
             .w(px(200.0))
             .h_full()
-            .bg(Theme::mantle(self.theme_mode))
+            // Lighter gray background for native macOS feel
+            .bg(Theme::sidebar_bg(self.theme_mode))
             .border_r_1()
             .border_color(Theme::surface0(self.theme_mode))
             .flex()
@@ -123,9 +123,9 @@ impl DevSweep {
                                     .justify_between()
                                     .child(
                                         div()
-                                            .text_xs()
+                                            .text_size(px(10.0))
                                             .text_color(Theme::subtext0(self.theme_mode))
-                                            .child("Available Storage"),
+                                            .child("AVAILABLE"),
                                     )
                                     .child(
                                         div()
@@ -157,46 +157,33 @@ impl DevSweep {
                                     ),
                             ),
                     )
-                    // Compact theme toggle (icon-only style)
+                    // Small icon-only theme toggle in corner
                     .child(
-                        div()
-                            .id("theme-toggle")
-                            .w_full()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(Theme::subtext0(self.theme_mode))
-                                    .child("Theme"),
-                            )
-                            .child(
-                                div()
-                                    .id("theme-toggle-btn")
-                                    .px_2()
-                                    .py_1()
-                                    .rounded_md()
-                                    .cursor_pointer()
-                                    .bg(Theme::surface0(self.theme_mode))
-                                    .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
-                                    .active(|style| {
-                                        style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
-                                    })
-                                    .on_click(cx.listener(|this, _event, cx| {
-                                        this.theme_mode = this.theme_mode.toggle();
-                                        cx.notify();
-                                    }))
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .child(if self.theme_mode.is_dark() {
-                                                "🌙"
-                                            } else {
-                                                "☀️"
-                                            }),
-                                    ),
-                            ),
+                        div().w_full().flex().justify_end().child(
+                            div()
+                                .id("theme-toggle-btn")
+                                .w(px(28.0))
+                                .h(px(28.0))
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .rounded_full()
+                                .cursor_pointer()
+                                .bg(Theme::surface0(self.theme_mode))
+                                .hover(|style| style.bg(Theme::surface1(self.theme_mode)))
+                                .active(|style| {
+                                    style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
+                                })
+                                .on_click(cx.listener(|this, _event, cx| {
+                                    this.theme_mode = this.theme_mode.toggle();
+                                    cx.notify();
+                                }))
+                                .child(div().text_sm().child(if self.theme_mode.is_dark() {
+                                    "🌙"
+                                } else {
+                                    "☀️"
+                                })),
+                        ),
                     ),
             )
     }
@@ -217,8 +204,16 @@ impl DevSweep {
             .gap_3()
             .rounded_md()
             .cursor_pointer()
+            // Active state: colored pill background (tinted blue)
             .bg(if is_active {
-                Theme::surface0(self.theme_mode)
+                Theme::blue_tint(self.theme_mode)
+            } else {
+                Theme::transparent()
+            })
+            // Left border indicator for active item
+            .border_l_2()
+            .border_color(if is_active {
+                Theme::blue(self.theme_mode)
             } else {
                 Theme::transparent()
             })
@@ -239,7 +234,7 @@ impl DevSweep {
                 div()
                     .text_sm()
                     .text_color(if is_active {
-                        Theme::text(self.theme_mode)
+                        Theme::blue(self.theme_mode)
                     } else {
                         Theme::subtext0(self.theme_mode)
                     })
