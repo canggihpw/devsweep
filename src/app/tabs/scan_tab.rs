@@ -326,72 +326,84 @@ impl DevSweep {
             })
     }
 
-    /// Render the split scan button (main button + dropdown trigger)
+    /// Render the scan button with inline dropdown menu
     fn render_split_scan_button(&self, is_open: bool, cx: &mut ViewContext<Self>) -> Div {
         div()
+            .relative()
             .flex()
-            .items_center()
-            // Main scan button
+            .flex_col()
+            // Button row
             .child(
                 div()
-                    .id("scan-btn")
-                    .px_4()
-                    .py_2()
-                    .bg(Theme::blue(self.theme_mode))
-                    .rounded_l_md()
-                    .cursor_pointer()
-                    .hover(|style| style.bg(Theme::blue_hover(self.theme_mode)))
-                    .active(|style| style.bg(Theme::blue_active(self.theme_mode)).opacity(0.9))
-                    .on_click(cx.listener(|this, _event, cx| {
-                        if !this.is_scanning && !this.is_cleaning {
-                            this.start_scan(true, cx);
-                        }
-                    }))
+                    .flex()
+                    .items_center()
+                    // Main scan button
                     .child(
                         div()
-                            .text_sm()
-                            .text_color(Theme::crust(self.theme_mode))
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child("Scan"),
-                    ),
-            )
-            // Dropdown trigger
-            .child(
-                div()
-                    .id("scan-dropdown-btn")
-                    .px_2()
-                    .py_2()
-                    .bg(if is_open {
-                        Theme::blue_active(self.theme_mode)
-                    } else {
-                        Theme::blue(self.theme_mode)
-                    })
-                    .rounded_r_md()
-                    .border_l_1()
-                    .border_color(Theme::blue_active(self.theme_mode))
-                    .cursor_pointer()
-                    .hover(|style| style.bg(Theme::blue_hover(self.theme_mode)))
-                    .active(|style| style.bg(Theme::blue_active(self.theme_mode)).opacity(0.9))
-                    .on_click(cx.listener(|this, _event, cx| {
-                        this.toggle_scan_dropdown(cx);
-                        cx.notify();
-                    }))
+                            .id("scan-btn")
+                            .px_4()
+                            .py_2()
+                            .bg(Theme::blue(self.theme_mode))
+                            .rounded_l_md()
+                            .cursor_pointer()
+                            .hover(|style| style.bg(Theme::blue_hover(self.theme_mode)))
+                            .active(|style| {
+                                style.bg(Theme::blue_active(self.theme_mode)).opacity(0.9)
+                            })
+                            .on_click(cx.listener(|this, _event, cx| {
+                                if !this.is_scanning && !this.is_cleaning {
+                                    this.scan_dropdown_open = false;
+                                    this.start_scan(true, cx);
+                                }
+                            }))
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(Theme::crust(self.theme_mode))
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .child("Scan"),
+                            ),
+                    )
+                    // Dropdown trigger (chevron)
                     .child(
                         div()
-                            .text_xs()
-                            .text_color(Theme::crust(self.theme_mode))
-                            .child(if is_open { "▲" } else { "▼" }),
+                            .id("scan-dropdown-btn")
+                            .px_2()
+                            .py_2()
+                            .bg(if is_open {
+                                Theme::blue_active(self.theme_mode)
+                            } else {
+                                Theme::blue(self.theme_mode)
+                            })
+                            .rounded_r_md()
+                            .border_l_1()
+                            .border_color(rgba(0xffffff30))
+                            .cursor_pointer()
+                            .hover(|style| style.bg(Theme::blue_hover(self.theme_mode)))
+                            .active(|style| {
+                                style.bg(Theme::blue_active(self.theme_mode)).opacity(0.9)
+                            })
+                            .on_click(cx.listener(|this, _event, cx| {
+                                this.toggle_scan_dropdown(cx);
+                                cx.notify();
+                            }))
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(Theme::crust(self.theme_mode))
+                                    .child(if is_open { "▲" } else { "▼" }),
+                            ),
                     ),
             )
     }
 
-    /// Render the scan dropdown overlay
+    /// Render the scan dropdown overlay - positioned relative to button
     fn render_scan_dropdown_overlay(&self, cx: &mut ViewContext<Self>) -> Div {
         div()
             .absolute()
-            .top(px(52.0))
+            .top(px(48.0))
             .right(px(16.0))
-            .min_w(px(140.0))
+            .min_w(px(160.0))
             .bg(Theme::base(self.theme_mode))
             .border_1()
             .border_color(Theme::surface1(self.theme_mode))
@@ -399,12 +411,16 @@ impl DevSweep {
             .shadow_lg()
             .flex()
             .flex_col()
+            .overflow_hidden()
+            // Full Rescan option
             .child(
                 div()
                     .id("full-rescan-option")
-                    .px_3()
-                    .py_2()
+                    .w_full()
+                    .px_4()
+                    .py_3()
                     .cursor_pointer()
+                    .bg(Theme::base(self.theme_mode))
                     .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
                     .active(|style| style.bg(Theme::surface1(self.theme_mode)).opacity(0.9))
                     .on_click(cx.listener(|this, _event, cx| {
@@ -414,11 +430,21 @@ impl DevSweep {
                         }
                         cx.notify();
                     }))
+                    .flex()
+                    .flex_col()
+                    .gap_1()
                     .child(
                         div()
                             .text_sm()
+                            .font_weight(FontWeight::MEDIUM)
                             .text_color(Theme::text(self.theme_mode))
                             .child("Full Rescan"),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(Theme::subtext0(self.theme_mode))
+                            .child("Bypass cache, scan everything"),
                     ),
             )
     }
