@@ -6,26 +6,392 @@
 use std::collections::HashMap;
 use std::process::Command;
 
-/// Common development ports with their typical usage
-pub const COMMON_PORTS: &[(u16, &str)] = &[
-    (3000, "React/Node.js dev server"),
-    (3001, "React dev server (alternate)"),
-    (4000, "Phoenix/GraphQL"),
-    (5000, "Flask/Python dev server"),
-    (5173, "Vite dev server"),
-    (5174, "Vite dev server (alternate)"),
-    (8000, "Django/Python"),
-    (8080, "HTTP alternate/Tomcat"),
-    (8081, "HTTP alternate"),
-    (8443, "HTTPS alternate"),
-    (9000, "PHP-FPM/SonarQube"),
-    (9090, "Prometheus"),
-    (27017, "MongoDB"),
-    (5432, "PostgreSQL"),
-    (3306, "MySQL"),
-    (6379, "Redis"),
-    (11211, "Memcached"),
+/// Port category for grouping and display
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PortCategory {
+    /// Development servers (React, Node, Python, etc.)
+    DevServer,
+    /// Database services (PostgreSQL, MySQL, MongoDB, Redis)
+    Database,
+    /// System services (SSH, DNS, etc.)
+    System,
+    /// Container/orchestration (Docker, Kubernetes)
+    Container,
+    /// Web servers (nginx, Apache)
+    WebServer,
+    /// Other/unknown
+    Other,
+}
+
+impl PortCategory {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::DevServer => "Dev Servers",
+            Self::Database => "Databases",
+            Self::System => "System",
+            Self::Container => "Containers",
+            Self::WebServer => "Web Servers",
+            Self::Other => "Other",
+        }
+    }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::DevServer => "🚀",
+            Self::Database => "🗄️",
+            Self::System => "⚙️",
+            Self::Container => "🐳",
+            Self::WebServer => "🌐",
+            Self::Other => "📡",
+        }
+    }
+}
+
+/// Safety level for killing a process
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SafetyLevel {
+    /// Safe to kill - dev servers, temporary processes
+    Safe,
+    /// Use caution - databases, may lose unsaved data
+    Caution,
+    /// Dangerous - system services, may break things
+    Dangerous,
+}
+
+impl SafetyLevel {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Safe => "Safe",
+            Self::Caution => "Caution",
+            Self::Dangerous => "Danger",
+        }
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Safe => "Safe to kill, easily restartable",
+            Self::Caution => "May lose unsaved data",
+            Self::Dangerous => "System service, may cause issues",
+        }
+    }
+}
+
+/// Port information with category and safety
+#[derive(Debug, Clone)]
+pub struct PortInfo {
+    pub port: u16,
+    pub description: &'static str,
+    pub category: PortCategory,
+    pub safety: SafetyLevel,
+}
+
+/// Known ports with their information
+const KNOWN_PORTS: &[PortInfo] = &[
+    // Dev Servers - Safe
+    PortInfo {
+        port: 3000,
+        description: "React/Node.js dev server",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 3001,
+        description: "React dev server (alt)",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 4000,
+        description: "Phoenix/GraphQL",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 4200,
+        description: "Angular dev server",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 5000,
+        description: "Flask/Python dev",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 5173,
+        description: "Vite dev server",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 5174,
+        description: "Vite dev server (alt)",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 8000,
+        description: "Django/Python",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 8080,
+        description: "HTTP alternate",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 8081,
+        description: "HTTP alternate",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 8443,
+        description: "HTTPS alternate",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 9000,
+        description: "PHP-FPM/SonarQube",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 9090,
+        description: "Prometheus",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 4321,
+        description: "Astro dev server",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 3030,
+        description: "Dev server",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 8888,
+        description: "Jupyter Notebook",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 9229,
+        description: "Node.js debugger",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    PortInfo {
+        port: 35729,
+        description: "LiveReload",
+        category: PortCategory::DevServer,
+        safety: SafetyLevel::Safe,
+    },
+    // Databases - Caution
+    PortInfo {
+        port: 5432,
+        description: "PostgreSQL",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 3306,
+        description: "MySQL",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 27017,
+        description: "MongoDB",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 6379,
+        description: "Redis",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 11211,
+        description: "Memcached",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 9200,
+        description: "Elasticsearch",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 9300,
+        description: "Elasticsearch cluster",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 26257,
+        description: "CockroachDB",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 8529,
+        description: "ArangoDB",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 7474,
+        description: "Neo4j",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 7687,
+        description: "Neo4j Bolt",
+        category: PortCategory::Database,
+        safety: SafetyLevel::Caution,
+    },
+    // Container/Orchestration - Caution
+    PortInfo {
+        port: 2375,
+        description: "Docker API (unencrypted)",
+        category: PortCategory::Container,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 2376,
+        description: "Docker API (TLS)",
+        category: PortCategory::Container,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 2377,
+        description: "Docker Swarm",
+        category: PortCategory::Container,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 6443,
+        description: "Kubernetes API",
+        category: PortCategory::Container,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 10250,
+        description: "Kubelet API",
+        category: PortCategory::Container,
+        safety: SafetyLevel::Caution,
+    },
+    // Web Servers - Caution
+    PortInfo {
+        port: 80,
+        description: "HTTP",
+        category: PortCategory::WebServer,
+        safety: SafetyLevel::Caution,
+    },
+    PortInfo {
+        port: 443,
+        description: "HTTPS",
+        category: PortCategory::WebServer,
+        safety: SafetyLevel::Caution,
+    },
+    // System Services - Dangerous
+    PortInfo {
+        port: 22,
+        description: "SSH",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 53,
+        description: "DNS",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 123,
+        description: "NTP",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 631,
+        description: "CUPS (Printing)",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 5353,
+        description: "mDNS (Bonjour)",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 548,
+        description: "AFP (Apple Filing)",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 88,
+        description: "Kerberos",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 464,
+        description: "Kerberos (kpasswd)",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
+    PortInfo {
+        port: 749,
+        description: "Kerberos admin",
+        category: PortCategory::System,
+        safety: SafetyLevel::Dangerous,
+    },
 ];
+
+/// System process names that should be marked as dangerous
+const SYSTEM_PROCESSES: &[&str] = &[
+    "launchd",
+    "kernel_task",
+    "WindowServer",
+    "loginwindow",
+    "systemd",
+    "init",
+    "kextd",
+    "configd",
+    "mds",
+    "mds_stores",
+    "diskarbitrationd",
+    "coreaudiod",
+    "bluetoothd",
+    "airportd",
+    "UserEventAgent",
+    "coreservicesd",
+    "Finder",
+    "Dock",
+    "SystemUIServer",
+    "Control Center",
+    "ssh",
+    "sshd",
+];
+
+/// Common development ports for quick access buttons
+pub const COMMON_DEV_PORTS: &[u16] = &[3000, 3001, 4000, 5000, 5173, 8000, 8080, 9000];
 
 /// Represents a process using a network port
 #[derive(Debug, Clone)]
@@ -44,6 +410,119 @@ pub struct PortProcess {
     pub local_address: String,
     /// Connection state (e.g., "LISTEN", "ESTABLISHED")
     pub state: String,
+    /// Category of this port/process
+    pub category: PortCategory,
+    /// Safety level for killing this process
+    pub safety: SafetyLevel,
+    /// Description of what this port is typically used for
+    pub description: Option<&'static str>,
+}
+
+impl PortProcess {
+    /// Create a new PortProcess with automatic categorization
+    fn new(
+        port: u16,
+        pid: u32,
+        process_name: String,
+        user: String,
+        protocol: String,
+        local_address: String,
+        state: String,
+    ) -> Self {
+        let (category, safety, description) = categorize_port(port, &process_name);
+
+        Self {
+            port,
+            pid,
+            process_name,
+            user,
+            protocol,
+            local_address,
+            state,
+            category,
+            safety,
+            description,
+        }
+    }
+}
+
+/// Categorize a port based on port number and process name
+fn categorize_port(
+    port: u16,
+    process_name: &str,
+) -> (PortCategory, SafetyLevel, Option<&'static str>) {
+    // First check if it's a known system process (always dangerous)
+    let process_lower = process_name.to_lowercase();
+    if SYSTEM_PROCESSES
+        .iter()
+        .any(|&p| process_lower.contains(&p.to_lowercase()))
+    {
+        return (PortCategory::System, SafetyLevel::Dangerous, None);
+    }
+
+    // Check known ports
+    if let Some(info) = KNOWN_PORTS.iter().find(|p| p.port == port) {
+        return (info.category, info.safety, Some(info.description));
+    }
+
+    // Infer from process name
+    let (category, safety) = categorize_by_process_name(&process_lower);
+
+    (category, safety, None)
+}
+
+/// Categorize based on process name patterns
+fn categorize_by_process_name(process_name: &str) -> (PortCategory, SafetyLevel) {
+    // Dev servers
+    if process_name.contains("node")
+        || process_name.contains("npm")
+        || process_name.contains("python")
+        || process_name.contains("ruby")
+        || process_name.contains("cargo")
+        || process_name.contains("go")
+        || process_name.contains("java")
+        || process_name.contains("deno")
+        || process_name.contains("bun")
+        || process_name.contains("esbuild")
+        || process_name.contains("vite")
+        || process_name.contains("webpack")
+        || process_name.contains("next")
+        || process_name.contains("nuxt")
+    {
+        return (PortCategory::DevServer, SafetyLevel::Safe);
+    }
+
+    // Databases
+    if process_name.contains("postgres")
+        || process_name.contains("mysql")
+        || process_name.contains("mongo")
+        || process_name.contains("redis")
+        || process_name.contains("elastic")
+        || process_name.contains("memcache")
+    {
+        return (PortCategory::Database, SafetyLevel::Caution);
+    }
+
+    // Containers
+    if process_name.contains("docker")
+        || process_name.contains("containerd")
+        || process_name.contains("kubectl")
+        || process_name.contains("kubelet")
+    {
+        return (PortCategory::Container, SafetyLevel::Caution);
+    }
+
+    // Web servers
+    if process_name.contains("nginx")
+        || process_name.contains("apache")
+        || process_name.contains("httpd")
+        || process_name.contains("caddy")
+    {
+        return (PortCategory::WebServer, SafetyLevel::Caution);
+    }
+
+    // Default to Other with Safe (unknown dev process)
+    (PortCategory::Other, SafetyLevel::Safe)
 }
 
 /// Result of a kill operation
@@ -60,10 +539,6 @@ pub fn get_listening_ports() -> Vec<PortProcess> {
     let mut processes = Vec::new();
 
     // Use lsof to get listening ports on macOS
-    // -i: Select Internet addresses
-    // -P: Inhibit port number to service name conversion
-    // -n: Inhibit host name conversion
-    // -sTCP:LISTEN: Only show TCP connections in LISTEN state
     let output = Command::new("lsof")
         .args(["-i", "-P", "-n", "-sTCP:LISTEN"])
         .output();
@@ -87,8 +562,11 @@ pub fn get_listening_ports() -> Vec<PortProcess> {
         }
     }
 
-    // Sort by port number
-    processes.sort_by_key(|p| p.port);
+    // Sort by safety level (dangerous first), then by port number
+    processes.sort_by(|a, b| match b.safety.cmp(&a.safety) {
+        std::cmp::Ordering::Equal => a.port.cmp(&b.port),
+        other => other,
+    });
 
     // Deduplicate by (port, pid) - keep first occurrence
     let mut seen = std::collections::HashSet::new();
@@ -101,7 +579,6 @@ pub fn get_listening_ports() -> Vec<PortProcess> {
 pub fn get_processes_on_port(port: u16) -> Vec<PortProcess> {
     let mut processes = Vec::new();
 
-    // Use lsof to find processes on specific port
     let output = Command::new("lsof")
         .args(["-i", &format!(":{}", port), "-P", "-n"])
         .output();
@@ -125,25 +602,18 @@ fn parse_lsof_output(
     let mut processes = Vec::new();
 
     for line in output.lines().skip(1) {
-        // Skip header line
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 9 {
             continue;
         }
 
-        // lsof output format:
-        // COMMAND  PID  USER   FD   TYPE  DEVICE  SIZE/OFF  NODE  NAME
-        // node    1234  user   23u  IPv4  0x1234  0t0       TCP   *:3000 (LISTEN)
-
         let process_name = parts[0].to_string();
         let pid = parts[1].parse::<u32>().unwrap_or(0);
         let user = parts[2].to_string();
 
-        // Find the NAME column (usually last or second to last)
         let name_idx = parts.len() - 1;
         let name = parts[name_idx];
 
-        // Check for state in parentheses
         let state = if name.starts_with('(') && name.ends_with(')') {
             let s = &name[1..name.len() - 1];
             let actual_name = if name_idx > 0 {
@@ -159,13 +629,11 @@ fn parse_lsof_output(
         let name_str = state.0;
         let conn_state = state.1;
 
-        // Parse address:port from NAME field (e.g., "*:3000" or "127.0.0.1:8080")
         if let Some(colon_pos) = name_str.rfind(':') {
             let addr = &name_str[..colon_pos];
             let port_str = &name_str[colon_pos + 1..];
 
             if let Ok(port) = port_str.parse::<u16>() {
-                // Determine protocol from TYPE column if available
                 let protocol = if parts.len() > 4 {
                     let type_str = parts[4];
                     if type_str.contains("TCP") || parts.iter().any(|p| *p == "TCP") {
@@ -179,15 +647,15 @@ fn parse_lsof_output(
                     default_protocol.to_string()
                 };
 
-                processes.push(PortProcess {
+                processes.push(PortProcess::new(
                     port,
                     pid,
                     process_name,
                     user,
                     protocol,
-                    local_address: addr.to_string(),
-                    state: conn_state,
-                });
+                    addr.to_string(),
+                    conn_state,
+                ));
             }
         }
     }
@@ -197,7 +665,6 @@ fn parse_lsof_output(
 
 /// Kill a process by PID
 pub fn kill_process(pid: u32) -> KillResult {
-    // First try SIGTERM (graceful)
     let output = Command::new("kill").arg(pid.to_string()).output();
 
     match output {
@@ -287,12 +754,26 @@ pub fn kill_processes_on_port(port: u16, force: bool) -> Vec<KillResult> {
     results
 }
 
+/// Get port info if it's a known port
+pub fn get_port_info(port: u16) -> Option<&'static PortInfo> {
+    KNOWN_PORTS.iter().find(|p| p.port == port)
+}
+
 /// Get common port description if available
 pub fn get_port_description(port: u16) -> Option<&'static str> {
-    COMMON_PORTS
+    KNOWN_PORTS
         .iter()
-        .find(|(p, _)| *p == port)
-        .map(|(_, desc)| *desc)
+        .find(|p| p.port == port)
+        .map(|p| p.description)
+}
+
+/// Group processes by category
+pub fn group_by_category(processes: &[PortProcess]) -> HashMap<PortCategory, Vec<&PortProcess>> {
+    let mut grouped: HashMap<PortCategory, Vec<&PortProcess>> = HashMap::new();
+    for process in processes {
+        grouped.entry(process.category).or_default().push(process);
+    }
+    grouped
 }
 
 /// Group processes by port
@@ -309,15 +790,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_common_ports_not_empty() {
-        assert!(!COMMON_PORTS.is_empty());
+    fn test_known_ports_not_empty() {
+        assert!(!KNOWN_PORTS.is_empty());
     }
 
     #[test]
     fn test_get_port_description() {
         assert_eq!(get_port_description(3000), Some("React/Node.js dev server"));
         assert_eq!(get_port_description(5432), Some("PostgreSQL"));
-        assert_eq!(get_port_description(12345), None); // Port not in common list
+        assert_eq!(get_port_description(12345), None);
+    }
+
+    #[test]
+    fn test_port_categorization() {
+        // Dev server port
+        let (cat, safety, _) = categorize_port(3000, "node");
+        assert_eq!(cat, PortCategory::DevServer);
+        assert_eq!(safety, SafetyLevel::Safe);
+
+        // Database port
+        let (cat, safety, _) = categorize_port(5432, "postgres");
+        assert_eq!(cat, PortCategory::Database);
+        assert_eq!(safety, SafetyLevel::Caution);
+
+        // System port
+        let (cat, safety, _) = categorize_port(22, "sshd");
+        assert_eq!(cat, PortCategory::System);
+        assert_eq!(safety, SafetyLevel::Dangerous);
+    }
+
+    #[test]
+    fn test_process_name_categorization() {
+        let (cat, safety) = categorize_by_process_name("node");
+        assert_eq!(cat, PortCategory::DevServer);
+        assert_eq!(safety, SafetyLevel::Safe);
+
+        let (cat, safety) = categorize_by_process_name("postgres");
+        assert_eq!(cat, PortCategory::Database);
+        assert_eq!(safety, SafetyLevel::Caution);
+
+        let (cat, safety) = categorize_by_process_name("nginx");
+        assert_eq!(cat, PortCategory::WebServer);
+        assert_eq!(safety, SafetyLevel::Caution);
     }
 
     #[test]
@@ -330,44 +844,36 @@ node    12346   user   24u  IPv6 0x1234567891      0t0  TCP *:3001 (LISTEN)
         assert_eq!(processes.len(), 2);
         assert_eq!(processes[0].port, 3000);
         assert_eq!(processes[0].pid, 12345);
+        assert_eq!(processes[0].category, PortCategory::DevServer);
+        assert_eq!(processes[0].safety, SafetyLevel::Safe);
         assert_eq!(processes[1].port, 3001);
     }
 
     #[test]
-    fn test_group_by_port() {
+    fn test_group_by_category() {
         let processes = vec![
-            PortProcess {
-                port: 3000,
-                pid: 1234,
-                process_name: "node".to_string(),
-                user: "user".to_string(),
-                protocol: "TCP".to_string(),
-                local_address: "*".to_string(),
-                state: "LISTEN".to_string(),
-            },
-            PortProcess {
-                port: 3000,
-                pid: 1235,
-                process_name: "node".to_string(),
-                user: "user".to_string(),
-                protocol: "TCP".to_string(),
-                local_address: "*".to_string(),
-                state: "LISTEN".to_string(),
-            },
-            PortProcess {
-                port: 8080,
-                pid: 5678,
-                process_name: "java".to_string(),
-                user: "user".to_string(),
-                protocol: "TCP".to_string(),
-                local_address: "*".to_string(),
-                state: "LISTEN".to_string(),
-            },
+            PortProcess::new(
+                3000,
+                1234,
+                "node".to_string(),
+                "user".to_string(),
+                "TCP".to_string(),
+                "*".to_string(),
+                "LISTEN".to_string(),
+            ),
+            PortProcess::new(
+                5432,
+                5678,
+                "postgres".to_string(),
+                "user".to_string(),
+                "TCP".to_string(),
+                "*".to_string(),
+                "LISTEN".to_string(),
+            ),
         ];
 
-        let grouped = group_by_port(&processes);
-        assert_eq!(grouped.len(), 2);
-        assert_eq!(grouped.get(&3000).unwrap().len(), 2);
-        assert_eq!(grouped.get(&8080).unwrap().len(), 1);
+        let grouped = group_by_category(&processes);
+        assert!(grouped.contains_key(&PortCategory::DevServer));
+        assert!(grouped.contains_key(&PortCategory::Database));
     }
 }

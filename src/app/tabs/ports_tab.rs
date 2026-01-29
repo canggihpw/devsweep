@@ -1,5 +1,5 @@
 use crate::app::state::DevSweep;
-use crate::port_manager::{self, PortProcess, COMMON_PORTS};
+use crate::port_manager::{self, PortCategory, PortProcess, SafetyLevel, COMMON_DEV_PORTS};
 use crate::ui::Theme;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -27,6 +27,20 @@ impl DevSweep {
                 .cloned()
                 .collect()
         };
+
+        // Count by safety level
+        let safe_count = filtered_processes
+            .iter()
+            .filter(|p| p.safety == SafetyLevel::Safe)
+            .count();
+        let caution_count = filtered_processes
+            .iter()
+            .filter(|p| p.safety == SafetyLevel::Caution)
+            .count();
+        let danger_count = filtered_processes
+            .iter()
+            .filter(|p| p.safety == SafetyLevel::Dangerous)
+            .count();
 
         div()
             .w_full()
@@ -119,7 +133,7 @@ impl DevSweep {
                             }),
                     ),
             )
-            // Filter/search bar
+            // Filter/search bar and stats
             .child(
                 div()
                     .w_full()
@@ -165,30 +179,61 @@ impl DevSweep {
                                     }),
                             ),
                     )
-                    // Stats pill
-                    .child(
-                        div()
-                            .px_3()
-                            .py_1()
-                            .bg(Theme::surface0(theme))
-                            .rounded_full()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(Theme::subtext0(theme))
-                                    .child("Listening"),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(Theme::blue(theme))
-                                    .child(format!("{}", filtered_processes.len())),
-                            ),
-                    ),
+                    // Safety stats pills
+                    .when(safe_count > 0, |d| {
+                        d.child(
+                            div()
+                                .px_2()
+                                .py_1()
+                                .bg(Theme::green_tint(theme))
+                                .rounded_full()
+                                .flex()
+                                .items_center()
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(Theme::green(theme))
+                                        .child(format!("{} Safe", safe_count)),
+                                ),
+                        )
+                    })
+                    .when(caution_count > 0, |d| {
+                        d.child(
+                            div()
+                                .px_2()
+                                .py_1()
+                                .bg(Theme::yellow_tint(theme))
+                                .rounded_full()
+                                .flex()
+                                .items_center()
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(Theme::yellow(theme))
+                                        .child(format!("{} Caution", caution_count)),
+                                ),
+                        )
+                    })
+                    .when(danger_count > 0, |d| {
+                        d.child(
+                            div()
+                                .px_2()
+                                .py_1()
+                                .bg(Theme::red_tint(theme))
+                                .rounded_full()
+                                .flex()
+                                .items_center()
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(Theme::red(theme))
+                                        .child(format!("{} Danger", danger_count)),
+                                ),
+                        )
+                    }),
             )
             // Common ports quick-access
             .child(
@@ -207,12 +252,12 @@ impl DevSweep {
                             .text_color(Theme::subtext0(theme))
                             .child("Common:"),
                     )
-                    .children(COMMON_PORTS.iter().take(8).map(|(port, _desc)| {
-                        let port_val = *port;
-                        let is_in_use = processes.iter().any(|p| p.port == port_val);
+                    .children(COMMON_DEV_PORTS.iter().map(|port_val| {
+                        let port = *port_val;
+                        let is_in_use = processes.iter().any(|p| p.port == port);
 
                         div()
-                            .id(SharedString::from(format!("quick-port-{}", port_val)))
+                            .id(SharedString::from(format!("quick-port-{}", port)))
                             .px_2()
                             .py_1()
                             .rounded_md()
@@ -230,7 +275,7 @@ impl DevSweep {
                             })
                             .hover(|style| style.bg(Theme::surface1(theme)))
                             .on_click(cx.listener(move |this, _event, cx| {
-                                this.set_port_filter(port_val.to_string(), cx);
+                                this.set_port_filter(port.to_string(), cx);
                             }))
                             .child(
                                 div()
@@ -240,7 +285,7 @@ impl DevSweep {
                                     } else {
                                         Theme::text(theme)
                                     })
-                                    .child(format!("{}", port_val)),
+                                    .child(format!("{}", port)),
                             )
                     }))
                     // Clear filter button
@@ -266,7 +311,7 @@ impl DevSweep {
                         )
                     }),
             )
-            // Port list
+            // Port list grouped by category
             .child(
                 div()
                     .id("ports-content")
@@ -276,12 +321,92 @@ impl DevSweep {
                     .child(if filtered_processes.is_empty() {
                         self.render_ports_empty_state()
                     } else {
-                        div().w_full().flex().flex_col().children(
-                            filtered_processes.iter().enumerate().map(|(idx, process)| {
-                                self.render_port_item(process.clone(), idx, cx)
-                            }),
-                        )
+                        self.render_ports_by_category(&filtered_processes, cx)
                     }),
+            )
+    }
+
+    /// Render ports grouped by category
+    fn render_ports_by_category(
+        &self,
+        processes: &[PortProcess],
+        cx: &mut ViewContext<Self>,
+    ) -> Div {
+        // Group by category
+        let grouped = port_manager::group_by_category(processes);
+
+        // Define category order (dangerous first)
+        let category_order = [
+            PortCategory::System,
+            PortCategory::Database,
+            PortCategory::Container,
+            PortCategory::WebServer,
+            PortCategory::DevServer,
+            PortCategory::Other,
+        ];
+
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .children(category_order.iter().filter_map(|cat| {
+                grouped
+                    .get(cat)
+                    .map(|procs| self.render_port_category_section(*cat, procs, cx))
+            }))
+    }
+
+    /// Render a port category section with its processes
+    fn render_port_category_section(
+        &self,
+        category: PortCategory,
+        processes: &[&PortProcess],
+        cx: &mut ViewContext<Self>,
+    ) -> Div {
+        let theme = self.theme_mode;
+        let count = processes.len();
+
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            // Category header
+            .child(
+                div()
+                    .w_full()
+                    .px_4()
+                    .py_2()
+                    .bg(Theme::surface0(theme))
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(div().text_base().child(category.icon()))
+                    .child(
+                        div()
+                            .text_sm()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(Theme::text(theme))
+                            .child(category.name()),
+                    )
+                    .child(
+                        div()
+                            .px_2()
+                            .py_0()
+                            .bg(Theme::surface1(theme))
+                            .rounded_full()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(Theme::subtext0(theme))
+                                    .child(format!("{}", count)),
+                            ),
+                    ),
+            )
+            // Processes in this category
+            .children(
+                processes
+                    .iter()
+                    .map(|process| self.render_port_item((*process).clone(), cx)),
             )
     }
 
@@ -297,7 +422,6 @@ impl DevSweep {
             .justify_center()
             .gap_6()
             .pb_16()
-            // Large icon
             .child(
                 div()
                     .w(px(80.0))
@@ -314,7 +438,6 @@ impl DevSweep {
                             .text_size(px(40.0)),
                     ),
             )
-            // Text hierarchy
             .child(
                 div()
                     .flex()
@@ -342,19 +465,12 @@ impl DevSweep {
             )
     }
 
-    fn render_port_item(
-        &self,
-        process: PortProcess,
-        _idx: usize,
-        cx: &mut ViewContext<Self>,
-    ) -> Div {
+    fn render_port_item(&self, process: PortProcess, cx: &mut ViewContext<Self>) -> Div {
         let theme = self.theme_mode;
         let pid = process.pid;
         let port = process.port;
         let is_killing = self.is_killing_process;
-
-        // Get description for common ports
-        let port_desc = port_manager::get_port_description(port);
+        let safety = process.safety;
 
         div()
             .w_full()
@@ -387,14 +503,13 @@ impl DevSweep {
                             .child(process.protocol.clone()),
                     ),
             )
-            // Process info (expandable section)
+            // Process info
             .child(
                 div()
                     .flex_1()
                     .flex()
                     .flex_col()
                     .gap_1()
-                    // Process name
                     .child(
                         div()
                             .flex()
@@ -407,7 +522,7 @@ impl DevSweep {
                                     .text_color(Theme::text(theme))
                                     .child(process.process_name.clone()),
                             )
-                            .when(port_desc.is_some(), |d| {
+                            .when(process.description.is_some(), |d| {
                                 d.child(
                                     div()
                                         .px_2()
@@ -418,12 +533,11 @@ impl DevSweep {
                                             div()
                                                 .text_xs()
                                                 .text_color(Theme::subtext0(theme))
-                                                .child(port_desc.unwrap_or("")),
+                                                .child(process.description.unwrap_or("")),
                                         ),
                                 )
                             }),
                     )
-                    // PID and user
                     .child(
                         div()
                             .flex()
@@ -449,13 +563,15 @@ impl DevSweep {
                             ),
                     ),
             )
+            // Safety badge
+            .child(self.render_safety_badge(safety))
             // State badge
             .child(
                 div()
                     .px_2()
                     .py_1()
                     .bg(if process.state == "LISTEN" {
-                        Theme::green_tint(theme)
+                        Theme::blue_tint(theme)
                     } else {
                         Theme::surface1(theme)
                     })
@@ -464,25 +580,31 @@ impl DevSweep {
                         div()
                             .text_xs()
                             .text_color(if process.state == "LISTEN" {
-                                Theme::green(theme)
+                                Theme::blue(theme)
                             } else {
                                 Theme::subtext0(theme)
                             })
                             .child(process.state.clone()),
                     ),
             )
-            // Kill button
+            // Kill button (disabled for dangerous processes unless held)
             .when(!is_killing, |d| {
+                let (btn_bg, btn_hover, btn_text) = match safety {
+                    SafetyLevel::Safe => (Theme::green(theme), Theme::green(theme), "Kill"),
+                    SafetyLevel::Caution => (Theme::yellow(theme), Theme::yellow(theme), "Kill"),
+                    SafetyLevel::Dangerous => (Theme::red(theme), Theme::red_hover(theme), "Kill!"),
+                };
+
                 d.child(
                     div()
                         .id(SharedString::from(format!("kill-btn-{}", pid)))
                         .px_3()
                         .py_2()
-                        .bg(Theme::red(theme))
+                        .bg(btn_bg)
                         .rounded_md()
                         .cursor_pointer()
-                        .hover(|style| style.bg(Theme::red_hover(theme)))
-                        .active(|style| style.bg(Theme::red_active(theme)).opacity(0.9))
+                        .hover(|style| style.bg(btn_hover).opacity(0.9))
+                        .active(|style| style.opacity(0.8))
                         .on_click(cx.listener(move |this, _event, cx| {
                             this.kill_port_process(pid, port, false, cx);
                         }))
@@ -491,9 +613,42 @@ impl DevSweep {
                                 .text_xs()
                                 .text_color(Theme::crust(theme))
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .child("Kill"),
+                                .child(btn_text),
                         ),
                 )
             })
+    }
+
+    /// Render a safety level badge
+    fn render_safety_badge(&self, safety: SafetyLevel) -> Div {
+        let theme = self.theme_mode;
+
+        let (bg, text_color, label, icon) = match safety {
+            SafetyLevel::Safe => (Theme::green_tint(theme), Theme::green(theme), "Safe", "✓"),
+            SafetyLevel::Caution => (
+                Theme::yellow_tint(theme),
+                Theme::yellow(theme),
+                "Caution",
+                "⚠",
+            ),
+            SafetyLevel::Dangerous => (Theme::red_tint(theme), Theme::red(theme), "Danger", "⛔"),
+        };
+
+        div()
+            .px_2()
+            .py_1()
+            .bg(bg)
+            .rounded_md()
+            .flex()
+            .items_center()
+            .gap_1()
+            .child(div().text_xs().child(icon))
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(text_color)
+                    .font_weight(FontWeight::MEDIUM)
+                    .child(label),
+            )
     }
 }

@@ -283,6 +283,13 @@ impl Theme {
         }
     }
 
+    pub fn yellow_tint(mode: ThemeMode) -> Rgba {
+        match mode {
+            ThemeMode::Light => rgba(0xdf8e1d20),
+            ThemeMode::Dark => rgba(0xf9e2af20),
+        }
+    }
+
     // Hover states
     pub fn blue_hover(mode: ThemeMode) -> Rgba {
         match mode {
