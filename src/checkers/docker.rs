@@ -63,7 +63,7 @@ pub fn check_docker() -> CheckResult {
                 &format_size(total_reclaimable),
             )
             .with_safe_to_delete(true)
-            .with_cleanup_command("docker system prune");
+            .with_cleanup_command("docker system prune -f");
             result.add_item(item);
         }
     }
