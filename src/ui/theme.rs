@@ -269,6 +269,20 @@ impl Theme {
         }
     }
 
+    pub fn red_tint(mode: ThemeMode) -> Rgba {
+        match mode {
+            ThemeMode::Light => rgba(0xd20f3920),
+            ThemeMode::Dark => rgba(0xf38ba820),
+        }
+    }
+
+    pub fn green_tint(mode: ThemeMode) -> Rgba {
+        match mode {
+            ThemeMode::Light => rgba(0x40a02b20),
+            ThemeMode::Dark => rgba(0xa6e3a120),
+        }
+    }
+
     // Hover states
     pub fn blue_hover(mode: ThemeMode) -> Rgba {
         match mode {

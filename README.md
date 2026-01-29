@@ -51,6 +51,14 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 - **Automatic Tracking**: Snapshots recorded after each scan
 - **Persistent History**: Trend data saved across app sessions
 
+### 🔌 Ports Tab
+- **Port Scanner**: View all processes listening on network ports
+- **Search/Filter**: Filter by port number or process name
+- **Common Ports**: Quick-access buttons for developer ports (3000, 5000, 8000, 8080, etc.)
+- **Process Details**: See PID, user, protocol, and connection state
+- **Kill Processes**: Terminate processes blocking ports with one click
+- **Auto-Refresh**: Automatically rescans after killing a process
+
 ### ⚙️ Settings Tab
 - **Cache TTL Configuration**: Customize how long scan results are cached per category
 - **Per-Category Control**: Set different TTL values for each tool category
@@ -593,6 +601,11 @@ xcrun stapler staple "DevSweep-0.2.0.dmg"
   - View space freed and net changes over time
   - Time range filters (Week, Month, Quarter, All Time)
   - Category-level trend breakdown
+- [x] **Port manager**: List processes using specific ports and kill them with one click
+  - View all active port usage on the system
+  - Search/filter by port number or process name
+  - Kill processes blocking ports you need for local development
+  - Common ports quick-access (3000, 5000, 8000, 8080, etc.)
 
 ### Planned Features
 

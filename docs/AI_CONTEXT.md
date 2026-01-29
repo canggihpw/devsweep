@@ -27,6 +27,7 @@ src/
 ├── custom_paths.rs      # User-defined custom scan paths
 ├── trends.rs            # Storage trends tracking and history
 ├── assets.rs            # Icon loading with rust-embed
+├── port_manager.rs      # Port scanning and process kill functionality
 ├── app/
 │   ├── mod.rs           # Re-exports DevSweep
 │   ├── state.rs         # DevSweep struct, SuperCategoryType enum
@@ -35,6 +36,7 @@ src/
 │   └── tabs/
 │       ├── mod.rs
 │       ├── scan_tab.rs      # Main scanning UI with super category grouping
+│       ├── ports_tab.rs     # Port manager UI
 │       ├── trends_tab.rs    # Storage trends visualization
 │       ├── quarantine_tab.rs # Quarantine management
 │       ├── settings_tab.rs   # Cache TTL settings + custom paths
@@ -321,6 +323,36 @@ pub category_trends: Vec<CategoryTrendData>,
 pub has_trend_data: bool,
 pub trend_snapshot_count: usize,
 ```
+
+## Port Manager System
+
+The port manager (`src/port_manager.rs`) helps developers manage network ports:
+- **PortProcess**: Represents a process using a network port (port, pid, name, user, protocol, state)
+- **COMMON_PORTS**: List of common development ports (3000, 5000, 8000, 8080, etc.)
+- **KillResult**: Result of a kill operation (success/failure with message)
+
+**Key functions**:
+- `get_listening_ports()` - Uses `lsof` to find all listening TCP/UDP ports
+- `get_processes_on_port(port)` - Find processes on a specific port
+- `kill_process(pid)` - Send SIGTERM to gracefully terminate
+- `force_kill_process(pid)` - Send SIGKILL to force terminate
+- `get_port_description(port)` - Get description for common dev ports
+
+**State in DevSweep** (`src/app/state.rs`):
+```rust
+pub port_processes: Vec<PortProcess>,
+pub port_filter: String,
+pub port_status: String,
+pub is_scanning_ports: bool,
+pub is_killing_process: bool,
+```
+
+**UI Features** (Ports tab):
+- List all listening ports with process details
+- Filter/search by port number or process name
+- Quick-access buttons for common dev ports
+- Kill button to terminate processes blocking ports
+- Auto-refresh after successful kill
 
 ## Git Repository Cleanup
 

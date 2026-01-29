@@ -1,5 +1,6 @@
 use crate::backend::{CategoryData, StorageBackend};
 use crate::custom_paths::{CustomPath, CustomPathsConfig};
+use crate::port_manager::PortProcess;
 use crate::trends::{CategoryTrendData, TrendData, TrendTimeRange};
 use crate::types;
 use crate::ui::sidebar::Tab;
@@ -263,6 +264,12 @@ pub struct DevSweep {
     pub category_trends: Vec<CategoryTrendData>,
     pub has_trend_data: bool,
     pub trend_snapshot_count: usize,
+    // Port manager state
+    pub port_processes: Vec<PortProcess>,
+    pub port_filter: String,
+    pub port_status: String,
+    pub is_scanning_ports: bool,
+    pub is_killing_process: bool,
 }
 
 impl Default for DevSweep {
@@ -346,6 +353,12 @@ impl DevSweep {
             category_trends: Vec::new(),
             has_trend_data: false,
             trend_snapshot_count: 0,
+            // Port manager state
+            port_processes: Vec::new(),
+            port_filter: String::new(),
+            port_status: String::new(),
+            is_scanning_ports: false,
+            is_killing_process: false,
         }
     }
 

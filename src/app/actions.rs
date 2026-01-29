@@ -156,6 +156,8 @@ impl DevSweep {
         } else if tab == Tab::Trends {
             self.refresh_trends_data();
         }
+        // Note: Ports tab auto-refresh is handled in the render method
+        // to avoid needing ViewContext here
     }
 
     pub fn start_scan(&mut self, use_cache: bool, cx: &mut ViewContext<Self>) {
@@ -984,5 +986,101 @@ impl DevSweep {
             .filter(|item| item.category_index == cat_idx && item.size >= threshold)
             .map(|item| item.size)
             .sum()
+    }
+
+    // ==================== Port Manager Actions ====================
+
+    /// Scan for all listening ports
+    pub fn scan_ports(&mut self, cx: &mut ViewContext<Self>) {
+        if self.is_scanning_ports {
+            return;
+        }
+
+        self.is_scanning_ports = true;
+        self.port_status = "Scanning ports...".to_string();
+        cx.notify();
+
+        cx.spawn(|this, mut cx| async move {
+            // Run port scanning in a separate thread
+            let processes = std::thread::spawn(crate::port_manager::get_listening_ports)
+                .join()
+                .unwrap_or_default();
+
+            let _ = cx.update(|cx| {
+                let _ = this.update(cx, |this, cx| {
+                    this.is_scanning_ports = false;
+                    this.port_processes = processes;
+                    let count = this.port_processes.len();
+                    this.port_status = format!("Found {} listening ports", count);
+                    cx.notify();
+                });
+            });
+        })
+        .detach();
+    }
+
+    /// Set the port filter string
+    pub fn set_port_filter(&mut self, filter: String, cx: &mut ViewContext<Self>) {
+        self.port_filter = filter;
+        cx.notify();
+    }
+
+    /// Kill a process using a port
+    pub fn kill_port_process(
+        &mut self,
+        pid: u32,
+        port: u16,
+        force: bool,
+        cx: &mut ViewContext<Self>,
+    ) {
+        if self.is_killing_process {
+            return;
+        }
+
+        self.is_killing_process = true;
+        self.port_status = format!("Killing process {} on port {}...", pid, port);
+        cx.notify();
+
+        cx.spawn(|this, mut cx| async move {
+            // Run kill in a separate thread
+            let result = std::thread::spawn(move || {
+                if force {
+                    crate::port_manager::force_kill_process(pid)
+                } else {
+                    crate::port_manager::kill_process(pid)
+                }
+            })
+            .join()
+            .unwrap_or_else(|_| crate::port_manager::KillResult {
+                pid,
+                port,
+                success: false,
+                message: "Thread panicked".to_string(),
+            });
+
+            let _ = cx.update(|cx| {
+                let _ = this.update(cx, |this, cx| {
+                    this.is_killing_process = false;
+
+                    if result.success {
+                        this.port_status = format!("✓ {}", result.message);
+                        // Refresh the port list after successful kill
+                        this.scan_ports(cx);
+                    } else {
+                        this.port_status = format!("✗ {}", result.message);
+                        cx.notify();
+                    }
+                });
+            });
+        })
+        .detach();
+    }
+
+    /// Refresh ports (called when switching to Ports tab)
+    pub fn refresh_ports(&mut self, cx: &mut ViewContext<Self>) {
+        // Auto-scan ports when navigating to the tab
+        if self.port_processes.is_empty() {
+            self.scan_ports(cx);
+        }
     }
 }
