@@ -17,7 +17,7 @@ impl Assets {
         let mut rgba = img.into_rgba8();
 
         // Convert RGBA to BGRA as GPUI expects
-        for pixel in rgba.chunks_exact_mut(4) {
+        for pixel in rgba.chunks_mut(4) {
             pixel.swap(0, 2);
         }
 

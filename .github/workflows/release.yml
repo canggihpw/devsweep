@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g., v0.3.0). Tag must already exist."
+        description: "Tag to release (e.g., v0.4.0). Tag must already exist."
         required: true
         type: string
 
@@ -20,12 +20,9 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: Create Release
+  build-and-release:
+    name: Build & Release
     runs-on: macos-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
 
     steps:
       - name: Checkout code
@@ -42,9 +39,37 @@ jobs:
 
       - name: Get version from tag
         id: get_version
-        run: echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
         env:
           TAG: ${{ inputs.tag }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release --verbose
+
+      - name: Create app bundle and DMG
+        run: |
+          chmod +x scripts/create-app-bundle.sh
+          ./scripts/create-app-bundle.sh
+
+      - name: Generate checksums
+        run: |
+          shasum -a 256 "DevSweep-${{ steps.get_version.outputs.version }}.dmg" > checksums.txt
+          cat checksums.txt
 
       - name: Extract changelog
         id: changelog
@@ -52,18 +77,16 @@ jobs:
           VERSION=${{ steps.get_version.outputs.version }}
           # Extract the changelog for this version
           CHANGELOG=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release and upload assets
+        uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ inputs.tag }}
-          release_name: Release ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
           body: |
             ## What's Changed
 
@@ -103,72 +126,7 @@ jobs:
             See the checksums file for verification.
           draft: false
           prerelease: ${{ contains(inputs.tag, 'alpha') || contains(inputs.tag, 'beta') || contains(inputs.tag, 'rc') }}
-
-  build-release:
-    name: Build Release Binary
-    needs: create-release
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag }}
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Build release binary
-        run: cargo build --release --verbose
-
-      - name: Create app bundle and DMG
-        run: |
-          chmod +x scripts/create-app-bundle.sh
-          ./scripts/create-app-bundle.sh
-
-      - name: Generate checksums
-        run: |
-          shasum -a 256 "DevSweep-${{ needs.create-release.outputs.version }}.dmg" > checksums.txt
-          cat checksums.txt
-
-      - name: Upload DMG
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./DevSweep-${{ needs.create-release.outputs.version }}.dmg
-          asset_name: DevSweep-${{ needs.create-release.outputs.version }}.dmg
-          asset_content_type: application/x-apple-diskimage
-
-      - name: Upload checksums
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./checksums.txt
-          asset_name: checksums.txt
-          asset_content_type: text/plain
-
-      - name: Upload binary
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./target/release/devsweep
-          asset_name: devsweep-macos-${{ needs.create-release.outputs.version }}
-          asset_content_type: application/octet-stream
+          files: |
+            ./DevSweep-${{ steps.get_version.outputs.version }}.dmg
+            ./checksums.txt
+            ./target/release/devsweep
