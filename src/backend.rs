@@ -1,7 +1,7 @@
 use crate::checkers;
 use crate::cleanup_history::{CleanupHistory, CleanupItemRecord, CleanupRecord};
 use crate::custom_paths;
-use crate::scan_cache::{PathTracker, ScanCache};
+use crate::scan_cache::{PathMetadata, PathTracker, ScanCache};
 use crate::types::{CheckResult, CleanupItem};
 use crate::utils::format_size;
 use rayon::prelude::*;
@@ -11,8 +11,40 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::SystemTime;
 
-// Type alias for checker functions to simplify type signatures
-type CheckerFn = fn() -> CheckResult;
+// Type alias for checker functions to simplify type signatures.
+pub type CheckerFn = fn() -> CheckResult;
+
+/// Single source of truth for the categories this app scans, in display order.
+///
+/// The display name here is the canonical category name that is used everywhere
+/// else: the scan cache key, the TTL config, the super-category bucket
+/// (`SuperCategoryType::from_category_name`), and the settings tab.
+pub fn all_category_checks() -> Vec<(&'static str, CheckerFn)> {
+    vec![
+        ("Docker", checkers::check_docker),
+        ("Homebrew", checkers::check_homebrew),
+        ("Swift Package Manager", checkers::check_swiftpm),
+        ("Node.js/npm/yarn", checkers::check_npm_yarn),
+        ("Bun", checkers::check_bun),
+        ("Python", checkers::check_python),
+        ("Rust/Cargo", checkers::check_rust),
+        ("Xcode", checkers::check_xcode),
+        ("Flutter", checkers::check_flutter),
+        ("Java (Gradle/Maven)", checkers::check_gradle_maven),
+        ("Go", checkers::check_go),
+        ("Android", checkers::check_android),
+        ("IDE Caches", checkers::check_ide_caches),
+        ("Shell Caches", checkers::check_shell_caches),
+        ("Database Caches", checkers::check_db_caches),
+        ("System Logs", checkers::check_system_logs),
+        ("Browser Caches", checkers::check_browser_caches),
+        ("node_modules in Projects", checkers::check_node_modules),
+        ("Git Repositories", checkers::check_git_repos),
+        ("General Caches", checkers::check_general_caches),
+        ("Custom Paths", custom_paths::check_custom_paths),
+        ("Trash", checkers::check_trash),
+    ]
+}
 
 #[derive(Debug, Clone)]
 pub struct CategoryData {
@@ -21,6 +53,15 @@ pub struct CategoryData {
     pub total_size: u64,
     pub item_count: i32,
     pub items: Vec<CleanupItem>,
+}
+
+/// A single step in a scan, in canonical display order.
+#[derive(Debug, Clone)]
+pub enum ScanTask {
+    /// Category must be scanned (cache missing, expired, or forced).
+    Run { name: String, check: CheckerFn },
+    /// Category can be served straight from a still-valid cache entry.
+    Cached { name: String },
 }
 
 impl CategoryData {
@@ -51,103 +92,124 @@ impl StorageBackend {
         }
     }
 
-    /// Scan with optional cache usage (incremental scanning)
-    pub fn scan_with_cache(&mut self, use_cache: bool) -> Vec<CategoryData> {
-        // Define all checks with their names (in desired display order)
-        let all_checks: Vec<(&str, CheckerFn)> = vec![
-            ("Docker", checkers::check_docker),
-            ("Homebrew", checkers::check_homebrew),
-            ("Node.js/npm/yarn", checkers::check_npm_yarn),
-            ("Python", checkers::check_python),
-            ("Rust/Cargo", checkers::check_rust),
-            ("Xcode", checkers::check_xcode),
-            ("Java (Gradle/Maven)", checkers::check_gradle_maven),
-            ("Go", checkers::check_go),
-            ("IDE Caches", checkers::check_ide_caches),
-            ("Shell Caches", checkers::check_shell_caches),
-            ("Database Caches", checkers::check_db_caches),
-            ("System Logs", checkers::check_system_logs),
-            ("Browser Caches", checkers::check_browser_caches),
-            ("node_modules in Projects", checkers::check_node_modules),
-            ("Git Repositories", checkers::check_git_repos),
-            ("General Caches", checkers::check_general_caches),
-            ("Custom Paths", custom_paths::check_custom_paths),
-            ("Trash", checkers::check_trash),
-        ];
-
-        self.categories.clear();
-
-        let total_checks = all_checks.len();
-
-        // Determine which checks need to run based on cache validity and TTL
-        let checks_to_run: Vec<_> = if use_cache {
-            all_checks
-                .iter()
-                .filter(|(name, _)| {
-                    // Check if category needs rescanning based on:
-                    // 1. TTL expiration (if TTL = 0, always rescan)
-                    // 2. File/directory metadata changes
-                    self.scan_cache.needs_rescan(name)
-                })
-                .copied()
-                .collect()
-        } else {
-            all_checks.clone()
-        };
-
-        let cached_count = if use_cache {
-            total_checks - checks_to_run.len()
-        } else {
-            0
-        };
-
-        if cached_count > 0 {
-            println!("📦 Using cached results for {} categories", cached_count);
-        }
-
-        // Run checks in parallel but collect into a HashMap to preserve order
-        let results_map: HashMap<String, (CheckResult, HashMap<PathBuf, _>)> = checks_to_run
-            .par_iter()
-            .map(|(name, check_fn)| {
-                let result = check_fn();
-
-                // Track paths for caching
-                let mut tracker = PathTracker::new();
-                for item in &result.items {
-                    if let Some(path) = &item.path {
-                        tracker.track(path);
+    /// Decide which categories need a real scan vs. which can come from cache.
+    ///
+    /// The caller is responsible for running the checks (optionally in parallel,
+    /// streaming results) and committing them via [`Self::commit_category`] /
+    /// [`Self::commit_cached_category`].
+    pub fn plan_scan(&self, use_cache: bool) -> Vec<ScanTask> {
+        all_category_checks()
+            .into_iter()
+            .map(|(name, check)| {
+                let needs_rescan = !use_cache || self.scan_cache.needs_rescan(name);
+                if needs_rescan {
+                    ScanTask::Run {
+                        name: name.to_string(),
+                        check,
+                    }
+                } else {
+                    ScanTask::Cached {
+                        name: name.to_string(),
                     }
                 }
+            })
+            .collect()
+    }
 
-                (name.to_string(), (result, tracker.into_paths()))
+    /// Run a single checker (no lock / no shared state) -> result + tracked paths.
+    pub fn run_check(check: CheckerFn) -> (CheckResult, HashMap<PathBuf, PathMetadata>) {
+        let result = check();
+
+        let mut tracker = PathTracker::new();
+        for item in &result.items {
+            if let Some(path) = &item.path {
+                tracker.track(path);
+            }
+        }
+        (result, tracker.into_paths())
+    }
+
+    /// Commit a freshly-scanned category: update the cache and the in-memory
+    /// category map, and return the display data for the UI.
+    pub fn commit_category(
+        &mut self,
+        name: String,
+        result: CheckResult,
+        tracked_paths: HashMap<PathBuf, PathMetadata>,
+    ) -> CategoryData {
+        // Hand the items to the cache once (cloned here); the original `result`
+        // is moved into the CategoryData for display.
+        let cache_result = CheckResult {
+            name: name.clone(),
+            status: None,
+            total_size: result.total_size,
+            items: result.items.clone(),
+            extra_data: Default::default(),
+        };
+        self.scan_cache
+            .update_category(name.clone(), cache_result, tracked_paths);
+
+        let category_data = CategoryData::new(name.clone(), result);
+        self.categories.insert(name.clone(), category_data.clone());
+        category_data
+    }
+
+    /// Commit a cached category without re-validating it (validity was already
+    /// confirmed when the plan was built).
+    pub fn commit_cached_category(&mut self, name: String) -> Option<CategoryData> {
+        let category_data = self
+            .scan_cache
+            .get_cached_result(&name)
+            .map(|result| CategoryData::new(name.clone(), result))?;
+        self.categories.insert(name.clone(), category_data.clone());
+        Some(category_data)
+    }
+
+    /// Scan with optional cache usage (incremental scanning).
+    ///
+    /// Runs the planned checks in parallel, commits them in canonical order, and
+    /// returns the results. This is the blocking form used by tests and callers
+    /// that want everything back at once; the UI uses [`Self::plan_scan`] +
+    /// incremental commits instead to stream progress.
+    pub fn scan_with_cache(&mut self, use_cache: bool) -> Vec<CategoryData> {
+        self.categories.clear();
+
+        let plan = self.plan_scan(use_cache);
+
+        // Determine which checks actually need to run, and run them in parallel.
+        let checks_to_run: Vec<(String, CheckerFn)> = plan
+            .iter()
+            .filter_map(|task| match task {
+                ScanTask::Run { name, check } => Some((name.clone(), *check)),
+                ScanTask::Cached { .. } => None,
             })
             .collect();
 
-        // Update cache and convert to CategoryData in original order
+        let mut results_map: HashMap<String, (CheckResult, HashMap<PathBuf, PathMetadata>)> =
+            checks_to_run
+                .par_iter()
+                .map(|(name, check)| {
+                    let (result, paths) = Self::run_check(*check);
+                    (name.clone(), (result, paths))
+                })
+                .collect();
+
         let mut final_results = Vec::new();
 
-        // Process results in the original order defined in all_checks vector
-        for (name, _) in &all_checks {
-            if let Some((result, tracked_paths)) = results_map.get(*name) {
-                // Update cache
-                self.scan_cache.update_category(
-                    name.to_string(),
-                    result.clone(),
-                    tracked_paths.clone(),
-                );
-
-                // Convert to CategoryData
-                let category_data = CategoryData::new(name.to_string(), result.clone());
-                self.categories
-                    .insert(category_data.name.clone(), category_data.clone());
-                final_results.push(category_data);
-            } else if use_cache {
-                // Add cached result if available (maintaining order)
-                if let Some(cached_result) = self.scan_cache.get_valid_category(name) {
-                    let category_data = CategoryData::new(name.to_string(), cached_result);
-                    self.categories
-                        .insert(category_data.name.clone(), category_data.clone());
-                    final_results.push(category_data);
+        // Commit in canonical order.
+        for task in plan {
+            match task {
+                ScanTask::Run { name, .. } => {
+                    if let Some((result, tracked_paths)) = results_map.remove(&name) {
+                        let category_data =
+                            self.commit_category(name.clone(), result, tracked_paths);
+                        final_results.push(category_data);
+                    }
+                }
+                ScanTask::Cached { name } => {
+                    if let Some(category_data) = self.commit_cached_category(name) {
+                        final_results.push(category_data);
+                    }
                 }
             }
         }
@@ -478,5 +540,52 @@ impl StorageBackend {
 impl Default for StorageBackend {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    /// The canonical category name set. Keep this in sync with
+    /// `SuperCategoryType::from_category_name` and the TTL defaults; this test
+    /// fails loudly if `all_category_checks()` drifts (typo, rename, removed
+    /// category) so the three sources can't silently disagree.
+    #[test]
+    fn test_all_category_checks_is_stable() {
+        let actual: BTreeSet<&str> = all_category_checks()
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect();
+
+        let expected: BTreeSet<&str> = [
+            "Android",
+            "Browser Caches",
+            "Bun",
+            "Custom Paths",
+            "Database Caches",
+            "Docker",
+            "Flutter",
+            "General Caches",
+            "Git Repositories",
+            "Go",
+            "Homebrew",
+            "IDE Caches",
+            "Java (Gradle/Maven)",
+            "Node.js/npm/yarn",
+            "Python",
+            "Rust/Cargo",
+            "Shell Caches",
+            "Swift Package Manager",
+            "System Logs",
+            "Trash",
+            "Xcode",
+            "node_modules in Projects",
+        ]
+        .into_iter()
+        .collect();
+
+        assert_eq!(actual, expected);
     }
 }

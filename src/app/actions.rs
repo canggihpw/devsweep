@@ -2,12 +2,40 @@ use crate::app::state::{
     CacheTTLSetting, CategoryItem, CleanupItemData, DevSweep, QuarantineItemData,
     QuarantineRecordData, SuperCategoryItem, SuperCategoryType,
 };
+use crate::backend::{CheckerFn, ScanTask, StorageBackend};
 use crate::custom_paths::CustomPathsConfig;
+use crate::scan_cache::PathMetadata;
+use crate::types;
 use crate::ui::sidebar::Tab;
 use crate::update_checker;
 use crate::utils;
 use gpui::*;
+use rayon::prelude::*;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+
+/// Message a scan worker sends back to the UI thread as each category resolves.
+enum ScanEvent {
+    /// A category was freshly scanned and should be committed + shown now.
+    Fresh {
+        name: String,
+        result: Box<types::CheckResult>,
+        paths: HashMap<PathBuf, PathMetadata>,
+    },
+    /// A category was served from cache.
+    Cached { name: String },
+}
+
+/// Stable identity key for an item, used for O(1) selection membership.
+fn item_key(item: &types::CleanupItem) -> (String, String) {
+    (
+        item.item_type.clone(),
+        item.path
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default(),
+    )
+}
 
 impl DevSweep {
     pub fn refresh_quarantine(&mut self) {
@@ -164,94 +192,203 @@ impl DevSweep {
 
         self.is_scanning = true;
         self.status_text = if use_cache {
-            "Scanning (using cache)...".into()
+            "Planning cached scan...".into()
         } else {
             "Full scan in progress...".into()
         };
         self.selected_items.clear();
+        self.selected_keys.clear();
         self.selected_items_count = 0;
         self.selected_items_size = "0 B".into();
+        self.category_data.clear();
 
         // Notify immediately to update UI and show disabled state
         cx.notify();
 
+        // Build the plan under a brief lock; the expensive work streams in after.
+        let plan = {
+            let backend = self.backend.lock().unwrap();
+            backend.plan_scan(use_cache)
+        };
+        let total = plan.len();
+        let order: Vec<String> = plan
+            .iter()
+            .map(|task| match task {
+                ScanTask::Run { name, .. } => name.clone(),
+                ScanTask::Cached { name } => name.clone(),
+            })
+            .collect();
+
         let backend = self.backend.clone();
 
         cx.spawn(|this, mut cx| async move {
-            // Run scan in background
-            let result = {
-                let mut backend = backend.lock().unwrap();
-                let cats = backend.scan_with_cache(use_cache);
-                let total = backend.get_total_reclaimable();
-                (cats, total)
-            };
+            let (tx, rx) = std::sync::mpsc::channel::<ScanEvent>();
 
-            let categories = result.0;
-            let total = result.1;
+            // Produce results on a dedicated thread so the pipeline runs
+            // concurrently with the UI pump below.
+            std::thread::spawn(move || {
+                // Serve cached categories first (instant, order-preserving).
+                for task in &plan {
+                    if let ScanTask::Cached { name } = task {
+                        let _ = tx.send(ScanEvent::Cached { name: name.clone() });
+                    }
+                }
 
-            // Update UI on main thread
-            let _ = cx.update(|cx| {
-                let _ = this.update(cx, |this, cx| {
-                    this.category_data = categories.clone();
+                // Run the actual checks in parallel, streaming each result as it
+                // finishes so the UI updates live instead of all at once.
+                let run_tasks: Vec<(&str, CheckerFn)> = plan
+                    .iter()
+                    .filter_map(|task| match task {
+                        ScanTask::Run { name, check } => Some((name.as_str(), *check)),
+                        ScanTask::Cached { .. } => None,
+                    })
+                    .collect();
 
-                    // Convert to UI models with super category assignment
-                    this.categories = categories
-                        .iter()
-                        .map(|c| CategoryItem {
-                            name: c.name.clone().into(),
-                            size: c.size.clone().into(),
-                            total_size: c.total_size,
-                            item_count: c.item_count,
-                            checked: false,
-                            expanded: false,
-                            super_category: SuperCategoryType::from_category_name(&c.name),
-                        })
-                        .collect();
+                run_tasks.par_iter().for_each_with(tx, |tx, item| {
+                    let (name, check) = *item;
+                    let (result, paths) = StorageBackend::run_check(check);
+                    let _ = tx.send(ScanEvent::Fresh {
+                        name: name.to_string(),
+                        result: Box::new(result),
+                        paths,
+                    });
+                });
+                // tx dropped here -> channel disconnects when the scan is done.
+            });
 
-                    this.all_items.clear();
-                    for (cat_idx, cat) in categories.iter().enumerate() {
-                        for item in &cat.items {
-                            let path_str = item
-                                .path
-                                .as_ref()
-                                .map(|p| p.display().to_string())
-                                .unwrap_or_default();
-                            let warning = item.warning.clone().unwrap_or_default();
-
-                            this.all_items.push(CleanupItemData {
-                                item_type: item.item_type.clone().into(),
-                                path: path_str.into(),
-                                size_str: item.size_str.clone().into(),
-                                size: item.size,
-                                safe_to_delete: item.safe_to_delete,
-                                warning: warning.into(),
-                                has_warning: item.warning.is_some(),
-                                selected: false,
-                                category_index: cat_idx,
+            // Pump results into the UI as they arrive, without blocking the
+            // executor thread.
+            let mut completed: usize = 0;
+            'pump: loop {
+                loop {
+                    match rx.try_recv() {
+                        Ok(ScanEvent::Fresh {
+                            name,
+                            result,
+                            paths,
+                        }) => {
+                            let data = {
+                                let mut backend = backend.lock().unwrap();
+                                backend.commit_category(name, *result, paths)
+                            };
+                            completed += 1;
+                            let _ = cx.update(|cx| {
+                                let _ = this.update(cx, |this, cx| {
+                                    this.category_data.push(data);
+                                    this.refresh_ui_from_category_data(completed, total, &order);
+                                    cx.notify();
+                                });
                             });
                         }
+                        Ok(ScanEvent::Cached { name }) => {
+                            if let Some(data) = {
+                                let mut backend = backend.lock().unwrap();
+                                backend.commit_cached_category(name)
+                            } {
+                                completed += 1;
+                                let _ = cx.update(|cx| {
+                                    let _ = this.update(cx, |this, cx| {
+                                        this.category_data.push(data);
+                                        this.refresh_ui_from_category_data(
+                                            completed, total, &order,
+                                        );
+                                        cx.notify();
+                                    });
+                                });
+                            }
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => break 'pump,
                     }
+                }
+                gpui::Timer::after(std::time::Duration::from_millis(25)).await;
+            }
 
-                    // Build super categories (only non-empty ones)
-                    this.build_super_categories();
-
-                    this.total_reclaimable = utils::format_size(total).into();
+            // Finalize: scan is complete.
+            let _ = cx.update(|cx| {
+                let _ = this.update(cx, |this, cx| {
                     this.is_scanning = false;
-
-                    if total > 0 {
-                        this.status_text =
-                            format!("Found {} that can be cleaned", utils::format_size(total))
-                                .into();
+                    this.refresh_ui_from_category_data(total, total, &order);
+                    let total_bytes: u64 = this.category_data.iter().map(|c| c.total_size).sum();
+                    if total_bytes > 0 {
+                        this.status_text = format!(
+                            "Found {} that can be cleaned",
+                            utils::format_size(total_bytes)
+                        )
+                        .into();
                     } else {
                         this.status_text = "No cleanable files found".into();
                     }
-
                     this.update_storage_info();
                     cx.notify();
                 });
             });
         })
         .detach();
+    }
+
+    /// Rebuild the scan tab's derived UI models from the committed categories.
+    ///
+    /// Called as each category streams in, so the list/totals/progress stay live.
+    fn refresh_ui_from_category_data(&mut self, completed: usize, total: usize, order: &[String]) {
+        // Keep the canonical display order even though results arrive out of order.
+        self.category_data.sort_by_key(|c| {
+            order
+                .iter()
+                .position(|n| n == &c.name)
+                .unwrap_or(usize::MAX)
+        });
+
+        // Convert to UI models with super category assignment
+        self.categories = self
+            .category_data
+            .iter()
+            .map(|c| CategoryItem {
+                name: c.name.clone().into(),
+                size: c.size.clone().into(),
+                total_size: c.total_size,
+                item_count: c.item_count,
+                checked: false,
+                expanded: false,
+                super_category: SuperCategoryType::from_category_name(&c.name),
+            })
+            .collect();
+
+        self.all_items.clear();
+        for (cat_idx, cat) in self.category_data.iter().enumerate() {
+            for item in &cat.items {
+                let path_str = item
+                    .path
+                    .as_ref()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_default();
+                let warning = item.warning.clone().unwrap_or_default();
+
+                self.all_items.push(CleanupItemData {
+                    item_type: item.item_type.clone().into(),
+                    path: path_str.into(),
+                    size_str: item.size_str.clone().into(),
+                    size: item.size,
+                    safe_to_delete: item.safe_to_delete,
+                    warning: warning.into(),
+                    has_warning: item.warning.is_some(),
+                    selected: false,
+                    category_index: cat_idx,
+                    global_index: self.all_items.len(),
+                });
+            }
+        }
+
+        // Build super categories (only non-empty ones)
+        self.build_super_categories();
+
+        let total_bytes: u64 = self.category_data.iter().map(|c| c.total_size).sum();
+        self.total_reclaimable = utils::format_size(total_bytes).into();
+
+        // Live progress while scanning
+        if self.is_scanning {
+            self.status_text = format!("Scanned {completed}/{total} categories").into();
+        }
     }
 
     pub fn toggle_category(&mut self, index: usize, _cx: &mut ViewContext<Self>) {
@@ -265,24 +402,19 @@ impl DevSweep {
         // Update all items in this category
         if let Some(cat_data) = self.category_data.get(index) {
             if checked {
-                // Add all items from this category to selected
                 for item in &cat_data.items {
-                    if !self
-                        .selected_items
-                        .iter()
-                        .any(|si| si.item_type == item.item_type && si.path == item.path)
-                    {
+                    if self.selected_keys.insert(item_key(item)) {
                         self.selected_items.push(item.clone());
                     }
                 }
             } else {
-                // Remove all items from this category
-                self.selected_items.retain(|si| {
-                    !cat_data
-                        .items
-                        .iter()
-                        .any(|ci| ci.item_type == si.item_type && ci.path == si.path)
-                });
+                let cat_keys: HashSet<(String, String)> =
+                    cat_data.items.iter().map(item_key).collect();
+                for key in &cat_keys {
+                    self.selected_keys.remove(key);
+                }
+                self.selected_items
+                    .retain(|si| !cat_keys.contains(&item_key(si)));
             }
 
             // Update item checkboxes
@@ -313,6 +445,7 @@ impl DevSweep {
         let cat_idx = item_data.category_index;
         let item_type = item_data.item_type.to_string();
         let item_path = item_data.path.to_string();
+        let key = (item_type.clone(), item_path.clone());
 
         // Find the backend item
         if let Some(cat) = self.category_data.get(cat_idx) {
@@ -322,24 +455,22 @@ impl DevSweep {
                         == Some(&item_path)
             }) {
                 if selected {
-                    if !self.selected_items.iter().any(|si| {
-                        si.item_type == backend_item.item_type && si.path == backend_item.path
-                    }) {
+                    if self.selected_keys.insert(key) {
                         self.selected_items.push(backend_item.clone());
                     }
                 } else {
+                    self.selected_keys.remove(&key);
                     self.selected_items.retain(|si| {
                         !(si.item_type == backend_item.item_type && si.path == backend_item.path)
                     });
                 }
             }
 
-            // Update category checkbox
-            let all_selected = cat.items.iter().all(|ci| {
-                self.selected_items
-                    .iter()
-                    .any(|si| si.item_type == ci.item_type && si.path == ci.path)
-            });
+            // Update category checkbox (O(n) via the key set instead of O(n^2))
+            let all_selected = cat
+                .items
+                .iter()
+                .all(|ci| self.selected_keys.contains(&item_key(ci)));
             self.categories[cat_idx].checked = all_selected && !cat.items.is_empty();
         }
 
@@ -354,7 +485,11 @@ impl DevSweep {
             item.selected = true;
         }
         self.selected_items.clear();
+        self.selected_keys.clear();
         for cat in &self.category_data {
+            for item in &cat.items {
+                self.selected_keys.insert(item_key(item));
+            }
             self.selected_items.extend(cat.items.clone());
         }
         self.update_selection_counts();
@@ -368,6 +503,7 @@ impl DevSweep {
             item.selected = false;
         }
         self.selected_items.clear();
+        self.selected_keys.clear();
         self.update_selection_counts();
     }
 

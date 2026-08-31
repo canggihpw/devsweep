@@ -2,6 +2,7 @@ use crate::app::state::{CategoryItem, CleanupItemData, DevSweep, SuperCategoryIt
 use crate::ui::Theme;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
+use std::collections::HashMap;
 
 impl DevSweep {
     pub fn render_scan_tab(&mut self, cx: &mut ViewContext<Self>) -> Div {
@@ -14,6 +15,16 @@ impl DevSweep {
         let super_categories = self.super_categories.clone();
         let categories = self.categories.clone();
         let items = self.all_items.clone();
+
+        // Pre-group items by their category index once, so rendering a category
+        // is O(its items) instead of O(all_items) per category on every frame.
+        let items_by_cat: HashMap<usize, Vec<&CleanupItemData>> = {
+            let mut grouped: HashMap<usize, Vec<&CleanupItemData>> = HashMap::new();
+            for item in &items {
+                grouped.entry(item.category_index).or_default().push(item);
+            }
+            grouped
+        };
 
         div()
             .w_full()
@@ -105,12 +116,16 @@ impl DevSweep {
                                 .child(
                                     div()
                                         .id("force-rescan-btn")
-                                        .px_2()
+                                        .px_4()
                                         .py_2()
+                                        .bg(Theme::surface1(self.theme_mode))
+                                        .rounded_md()
+                                        .border_1()
+                                        .border_color(Theme::surface2(self.theme_mode))
                                         .cursor_pointer()
                                         .hover(|style| style.bg(Theme::surface0(self.theme_mode)))
                                         .active(|style| {
-                                            style.bg(Theme::surface1(self.theme_mode)).opacity(0.9)
+                                            style.bg(Theme::surface2(self.theme_mode)).opacity(0.9)
                                         })
                                         .on_click(cx.listener(|this, _event, cx| {
                                             if !this.is_scanning && !this.is_cleaning {
@@ -119,7 +134,7 @@ impl DevSweep {
                                         }))
                                         .child(
                                             div()
-                                                .text_xs()
+                                                .text_sm()
                                                 .text_color(Theme::subtext0(self.theme_mode))
                                                 .child("Full Rescan"),
                                         ),
@@ -298,7 +313,7 @@ impl DevSweep {
                                         super_cat.clone(),
                                         super_idx,
                                         &categories,
-                                        &items,
+                                        &items_by_cat,
                                         cx,
                                     )
                                 }),
@@ -331,7 +346,7 @@ impl DevSweep {
         super_cat: SuperCategoryItem,
         super_idx: usize,
         all_categories: &[CategoryItem],
-        all_items: &[CleanupItemData],
+        items_by_cat: &HashMap<usize, Vec<&CleanupItemData>>,
         cx: &mut ViewContext<Self>,
     ) -> Div {
         let expanded = super_cat.expanded;
@@ -429,8 +444,19 @@ impl DevSweep {
                                     .text_xs()
                                     .text_color(Theme::subtext0(self.theme_mode))
                                     .child(format!(
-                                        "{} categories, {} items",
-                                        super_cat.category_count, super_cat.item_count
+                                        "{} {}, {} {}",
+                                        super_cat.category_count,
+                                        if super_cat.category_count == 1 {
+                                            "category"
+                                        } else {
+                                            "categories"
+                                        },
+                                        super_cat.item_count,
+                                        if super_cat.item_count == 1 {
+                                            "item"
+                                        } else {
+                                            "items"
+                                        }
                                     )),
                             ),
                     )
@@ -453,11 +479,10 @@ impl DevSweep {
                         .bg(Theme::base(self.theme_mode))
                         .children(super_cat.category_indices.iter().map(|&cat_idx| {
                             let category = all_categories[cat_idx].clone();
-                            let cat_items: Vec<_> = all_items
-                                .iter()
-                                .filter(|item| item.category_index == cat_idx)
-                                .cloned()
-                                .collect();
+                            let cat_items: &[&CleanupItemData] = items_by_cat
+                                .get(&cat_idx)
+                                .map(|v| v.as_slice())
+                                .unwrap_or_default();
                             self.render_category_section(category, cat_items, cat_idx, cx)
                         })),
                 )
@@ -467,7 +492,7 @@ impl DevSweep {
     pub fn render_category_section(
         &self,
         category: CategoryItem,
-        items: Vec<CleanupItemData>,
+        items: &[&CleanupItemData],
         cat_idx: usize,
         cx: &mut ViewContext<Self>,
     ) -> Div {
@@ -578,16 +603,9 @@ impl DevSweep {
                         .flex_col()
                         .bg(Theme::base(self.theme_mode))
                         .children(items.iter().map(|item| {
-                            let global_idx = self
-                                .all_items
-                                .iter()
-                                .position(|i| {
-                                    i.item_type == item.item_type
-                                        && i.path == item.path
-                                        && i.category_index == cat_idx
-                                })
-                                .unwrap_or(0);
-                            self.render_cleanup_item(item.clone(), global_idx, cx)
+                            // `item` already carries its global index stored at scan
+                            // time, so no O(n) search is needed and row ids stay unique.
+                            self.render_cleanup_item(item, cx)
                         })),
                 )
             })
@@ -595,14 +613,14 @@ impl DevSweep {
 
     pub fn render_cleanup_item(
         &self,
-        item: CleanupItemData,
-        global_idx: usize,
+        item: &CleanupItemData,
         cx: &mut ViewContext<Self>,
     ) -> impl IntoElement {
         let selected = item.selected;
         let has_warning = item.has_warning;
         let safe_to_delete = item.safe_to_delete;
         let path_empty = item.path.is_empty();
+        let global_idx = item.global_index;
 
         div()
             .id(SharedString::from(format!("item-{}", global_idx)))

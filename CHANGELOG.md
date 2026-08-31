@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-31
+
+### Added
+- Streaming scan results: categories appear live as each check completes, with a
+  "Scanned X/Y categories" progress indicator in the header — no more waiting for
+  the whole scan to finish before anything shows up.
+- New scan categories (now **22** in total):
+  - **Bun** (global + install caches)
+  - **Flutter** (Dart pub cache, `~/.pub-cache`)
+  - **Android** (Gradle + Android SDK caches)
+  - **Swift Package Manager** caches (`org.swift.swiftpm`)
+  - Python now also detects the **uv** cache
+  - Rust/Cargo now also detects **sccache**
+- Single source of truth for category names, with tests guarding against drift
+  between the scanner, the UI grouping, and the TTL defaults.
+
+### Changed
+- Performance:
+  - Faster scans — cached categories are reused by TTL without re-`stat()`-ing
+    every path; path validation only runs where no TTL is set (in parallel).
+  - Scan results render via pre-grouped lists and stored item indices
+    (O(n²) → O(n)), which also fixes duplicate row ids / wrong-toggle bugs.
+  - No redundant clones in the scan pipeline (results are moved, not copied).
+  - Selection/select-all is O(1) via a key set instead of O(n) scans.
+  - Directory sizing is sequential again to avoid starving the parallel pool.
+- UI: "Full Rescan" is now a proper secondary button; category badges
+  pluralize correctly (e.g. `1 category, 1 item`).
+- Internals: scan pipeline refactored onto a small plan/commit API that both the
+  blocking (`scan_with_cache`) and streaming paths share.
+
+### Fixed
+- Node.js and Java caches now land under **Package Managers** instead of being
+  mis-grouped under "System & Browsers" (the UI no longer matches stale names).
+- Removed per-scan debug `stdout` spam from the Trash checker.
+- Dropped a dead `last_full_scan` field from the scan cache.
+
 ## [0.3.0] - 2026-01-25
 
 ### Added
@@ -126,7 +162,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Version Links
 
-[Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/canggihpw/devsweep/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/canggihpw/devsweep/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/canggihpw/devsweep/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/canggihpw/devsweep/releases/tag/v0.1.0

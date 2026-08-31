@@ -22,6 +22,19 @@ pub fn check_python() -> CheckResult {
         }
     }
 
+    // uv cache (https://github.com/astral-sh/uv)
+    let uv_cache = home.join("Library/Caches/uv");
+    if uv_cache.exists() {
+        let size = get_dir_size(&uv_cache);
+        if size > 0 {
+            let item = CleanupItem::new("uv cache", size, &format_size(size))
+                .with_path(uv_cache)
+                .with_safe_to_delete(true)
+                .with_warning("Re-downloaded on the next uv run/install");
+            result.add_item(item);
+        }
+    }
+
     // pyenv versions
     let pyenv_path = home.join(".pyenv/versions");
     if pyenv_path.exists() {

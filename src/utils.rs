@@ -1,5 +1,4 @@
 use bytesize::ByteSize;
-use rayon::prelude::*;
 use std::path::Path;
 use std::process::Command;
 use walkdir::WalkDir;
@@ -9,7 +8,12 @@ pub fn format_size(bytes: u64) -> String {
     ByteSize(bytes).to_string_as(true)
 }
 
-/// Get total size of a directory using parallel iteration for better performance
+/// Get total size of a directory.
+///
+/// Deliberately sequential: the filesystem metadata reads are disk-bound and a
+/// simple `read_dir` walk is as fast or faster than `par_bridge`, while avoiding
+/// oversubscribing the shared rayon pool that the per-category checkers already
+/// use.
 pub fn get_dir_size<P: AsRef<Path>>(path: P) -> u64 {
     let path = path.as_ref();
     if !path.exists() {
@@ -18,7 +22,6 @@ pub fn get_dir_size<P: AsRef<Path>>(path: P) -> u64 {
 
     WalkDir::new(path)
         .into_iter()
-        .par_bridge()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
         .filter_map(|e| e.metadata().ok())
