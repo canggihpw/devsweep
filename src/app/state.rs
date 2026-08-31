@@ -41,21 +41,28 @@ impl SuperCategoryType {
     }
 
     /// Map a category name to its super category
+    ///
+    /// Names must match the canonical display names used by
+    /// `StorageBackend::scan_with_cache` (`all_checks`), not the internal
+    /// checker-result names.
     pub fn from_category_name(name: &str) -> Self {
         match name {
             // Development Tools
-            "Docker" | "Homebrew" | "Xcode" | "IDE Caches" => Self::DevelopmentTools,
-            // Package Managers (match actual checker names)
-            "Node.js Package Managers" | "Python" | "Rust/Cargo" | "Go" | "Java Build Tools" => {
+            "Docker"
+            | "Homebrew"
+            | "Xcode"
+            | "IDE Caches"
+            | "Flutter"
+            | "Android"
+            | "Swift Package Manager" => Self::DevelopmentTools,
+            // Package Managers (match the canonical category names)
+            "Node.js/npm/yarn" | "Bun" | "Python" | "Rust/Cargo" | "Go" | "Java (Gradle/Maven)" => {
                 Self::PackageManagers
             }
             // Project Files
             "node_modules in Projects" | "Git Repositories" | "Custom Paths" => Self::ProjectFiles,
-            // System & Browsers (match actual checker names)
-            "System Logs & Crash Reports"
-            | "Browser Caches"
-            | "Shell Caches"
-            | "Database Caches"
+            // System & Browsers
+            "System Logs" | "Browser Caches" | "Shell Caches" | "Database Caches"
             | "General Caches" => Self::SystemAndBrowsers,
             // Trash
             "Trash" => Self::Trash,
@@ -118,6 +125,9 @@ pub struct CleanupItemData {
     pub has_warning: bool,
     pub selected: bool,
     pub category_index: usize,
+    /// Absolute index into the app-wide `all_items` list. Populated once during
+    /// scan; the render layer uses it directly instead of re-searching for an item.
+    pub global_index: usize,
 }
 
 #[derive(Clone)]
@@ -170,6 +180,9 @@ pub struct DevSweep {
     pub all_items: Vec<CleanupItemData>,
     pub category_data: Vec<CategoryData>,
     pub selected_items: Vec<types::CleanupItem>,
+    /// Lookup-set of (item_type, path) keys mirroring `selected_items`, kept in
+    /// sync so membership checks are O(1) instead of O(n) scans on every toggle.
+    pub selected_keys: std::collections::HashSet<(String, String)>,
     pub quarantine_records: Vec<QuarantineRecordData>,
     pub quarantine_items: Vec<QuarantineItemData>,
     pub quarantine_total_size: SharedString,
@@ -230,6 +243,7 @@ impl DevSweep {
             all_items: Vec::new(),
             category_data: Vec::new(),
             selected_items: Vec::new(),
+            selected_keys: std::collections::HashSet::new(),
             quarantine_records: Vec::new(),
             quarantine_items: Vec::new(),
             quarantine_total_size: "0 B".into(),

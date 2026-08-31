@@ -61,7 +61,7 @@ fn check_user_logs(result: &mut CheckResult, home: &Path) {
     }
 
     if !log_items.is_empty() {
-        log_items.sort_by(|a, b| b.size.cmp(&a.size));
+        log_items.sort_by_key(|x| std::cmp::Reverse(x.size));
         result.add_item(
             CleanupItem::new(
                 "Application Logs (>5MB)",
@@ -341,7 +341,7 @@ fn check_app_logs(result: &mut CheckResult, home: &Path) {
     }
 
     if !app_log_items.is_empty() {
-        app_log_items.sort_by(|a, b| b.size.cmp(&a.size));
+        app_log_items.sort_by_key(|x| std::cmp::Reverse(x.size));
         result.add_item(
             CleanupItem::new(
                 "Application Logs & Crash Reports",

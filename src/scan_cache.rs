@@ -69,22 +69,30 @@ impl CachedCategoryResult {
 
     /// Check if this cached result is still valid
     pub fn is_valid(&self) -> bool {
-        // Check TTL first
+        // TTL short-circuit: when a TTL is set, trust it instead of stat()ing
+        // every tracked path. This is the common case (most categories have a
+        // TTL) and avoids thousands of filesystem metadata syscalls per scan.
         if let Some(ttl) = self.ttl_seconds {
-            if let Ok(age) = self.scan_timestamp.elapsed() {
-                if age.as_secs() > ttl {
-                    return false; // Expired by TTL
-                }
-            }
-        }
-
-        // Check if any tracked paths have changed
-        for (path, metadata) in &self.tracked_paths {
-            if !path.exists() || metadata.has_changed(path) {
+            // TTL = 0 means "never cache".
+            if ttl == 0 {
                 return false;
             }
+            if let Ok(age) = self.scan_timestamp.elapsed() {
+                if age.as_secs() < ttl {
+                    return true; // Still inside the validity window - reuse.
+                }
+            }
+            // TTL expired -> rescan.
+            return false;
         }
-        true
+
+        // No TTL configured: fall back to validating the tracked paths so the
+        // cache can't go stale. Parallelized with early exit on the first change.
+        use rayon::prelude::*;
+        let tracked: Vec<(&PathBuf, &PathMetadata)> = self.tracked_paths.iter().collect();
+        !tracked
+            .par_iter()
+            .any(|(path, metadata)| !path.exists() || metadata.has_changed(path))
     }
 
     /// Convert back to CheckResult
@@ -115,11 +123,15 @@ impl CacheConfig {
         category_ttls.insert("Docker".to_string(), 300); // 5 minutes
         category_ttls.insert("Homebrew".to_string(), 3600); // 1 hour
         category_ttls.insert("Node.js/npm/yarn".to_string(), 600); // 10 minutes
+        category_ttls.insert("Bun".to_string(), 600); // 10 minutes
         category_ttls.insert("Python".to_string(), 600); // 10 minutes
         category_ttls.insert("Rust/Cargo".to_string(), 300); // 5 minutes
         category_ttls.insert("Xcode".to_string(), 300); // 5 minutes
+        category_ttls.insert("Flutter".to_string(), 600); // 10 minutes
         category_ttls.insert("Java (Gradle/Maven)".to_string(), 600); // 10 minutes
         category_ttls.insert("Go".to_string(), 600); // 10 minutes
+        category_ttls.insert("Android".to_string(), 600); // 10 minutes
+        category_ttls.insert("Swift Package Manager".to_string(), 600); // 10 minutes
         category_ttls.insert("node_modules in Projects".to_string(), 300); // 5 minutes
         category_ttls.insert("IDE Caches".to_string(), 600); // 10 minutes
         category_ttls.insert("Shell Caches".to_string(), 300); // 5 minutes
@@ -175,7 +187,6 @@ impl CacheConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanCache {
     pub categories: HashMap<String, CachedCategoryResult>,
-    pub last_full_scan: Option<SystemTime>,
     #[serde(skip)]
     pub config: CacheConfig,
 }
@@ -184,7 +195,6 @@ impl ScanCache {
     pub fn new() -> Self {
         Self {
             categories: HashMap::new(),
-            last_full_scan: None,
             config: CacheConfig::default_config(),
         }
     }
@@ -232,7 +242,6 @@ impl ScanCache {
     /// Clear the cache
     pub fn clear(&mut self) {
         self.categories.clear();
-        self.last_full_scan = None;
     }
 
     /// Update cache with new scan result
@@ -250,7 +259,6 @@ impl ScanCache {
         }
 
         self.categories.insert(name, cached);
-        self.last_full_scan = Some(SystemTime::now());
     }
 
     /// Get cached result if still valid
@@ -261,6 +269,17 @@ impl ScanCache {
             }
         }
         None
+    }
+
+    /// Get a cached result WITHOUT re-validating it.
+    ///
+    /// Call this only when the category was already confirmed valid (e.g. it was
+    /// skipped by `needs_rescan` moments earlier), to avoid re-running the
+    /// expensive path-metadata validation for the same category.
+    pub fn get_cached_result(&self, name: &str) -> Option<CheckResult> {
+        self.categories
+            .get(name)
+            .map(|cached| cached.to_check_result())
     }
 
     /// Check if a category needs rescanning

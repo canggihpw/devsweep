@@ -174,7 +174,6 @@ fn test_missing_cache_file_creates_new() {
     let cache = ScanCache::new();
 
     assert!(cache.categories.is_empty());
-    assert!(cache.last_full_scan.is_none());
 }
 
 #[test]
@@ -483,7 +482,6 @@ fn test_cache_clear_removes_all() {
 
     // Should be empty
     assert!(cache.categories.is_empty());
-    assert!(cache.last_full_scan.is_none());
 }
 
 #[test]
@@ -522,7 +520,6 @@ fn test_scan_cache_default() {
     let cache = ScanCache::default();
 
     assert!(cache.categories.is_empty());
-    assert!(cache.last_full_scan.is_none());
 }
 
 #[test]

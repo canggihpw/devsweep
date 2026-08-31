@@ -40,7 +40,7 @@ pub fn check_general_caches() -> CheckResult {
                 .collect();
 
             // Sort by size descending and add each as a separate item
-            large_caches.sort_by(|a, b| b.2.cmp(&a.2));
+            large_caches.sort_by_key(|item| std::cmp::Reverse(item.2));
             for (name, path, size) in large_caches {
                 let item = CleanupItem::new(&format!("cache: {}", name), size, &format_size(size))
                     .with_path(path)
@@ -76,11 +76,7 @@ pub fn check_trash() -> CheckResult {
 
     let trash_path = home.join(".Trash");
 
-    println!("DEBUG: Checking trash at: {:?}", trash_path);
-    println!("DEBUG: Trash exists: {}", trash_path.exists());
-
     if !trash_path.exists() {
-        println!("DEBUG: Trash path does not exist");
         return result;
     }
 
@@ -90,52 +86,25 @@ pub fn check_trash() -> CheckResult {
             let mut count = 0;
             let mut size = 0u64;
 
-            for entry in entries {
-                match entry {
-                    Ok(e) => {
-                        count += 1;
-                        let path = e.path();
-                        println!("DEBUG: Found trash item: {:?}", path.file_name());
+            for entry in entries.flatten() {
+                count += 1;
+                let path = entry.path();
 
-                        // Calculate size for this entry
-                        if let Ok(metadata) = e.metadata() {
-                            if metadata.is_file() {
-                                size += metadata.len();
-                            } else if metadata.is_dir() {
-                                // For directories, walk recursively
-                                size += get_dir_size(&path);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        println!("DEBUG: Error reading entry: {}", e);
+                // Calculate size for this entry
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() {
+                        size += metadata.len();
+                    } else if metadata.is_dir() {
+                        // For directories, walk recursively
+                        size += get_dir_size(&path);
                     }
                 }
             }
 
-            println!(
-                "DEBUG: Trash contains {} items, total size: {} bytes ({})",
-                count,
-                size,
-                format_size(size)
-            );
             (count, size)
         }
-        Err(e) => {
-            println!("DEBUG: Error reading trash directory: {}", e);
-            println!(
-                "DEBUG: This may be a permission issue. Try running the app with appropriate permissions."
-            );
-
-            // Fallback: try to get metadata of the trash directory itself
-            if let Ok(metadata) = fs::metadata(&trash_path) {
-                println!(
-                    "DEBUG: Trash directory metadata - is_dir: {}, readonly: {}",
-                    metadata.is_dir(),
-                    metadata.permissions().readonly()
-                );
-            }
-
+        Err(_) => {
+            // Trash may be unreadable for permission reasons; report nothing.
             return result;
         }
     };
@@ -149,14 +118,6 @@ pub fn check_trash() -> CheckResult {
         .with_path(trash_path)
         .with_safe_to_delete(true);
         result.add_item(item);
-        println!("DEBUG: Added trash item to results");
-    } else if item_count > 0 {
-        println!(
-            "DEBUG: Trash has {} items but size calculated as 0 - may be permission issue",
-            item_count
-        );
-    } else {
-        println!("DEBUG: Trash is empty");
     }
 
     result
@@ -257,7 +218,7 @@ pub fn check_node_modules() -> CheckResult {
     };
 
     // Sort by size descending and add each as a separate item
-    node_modules_found.sort_by(|a, b| b.2.cmp(&a.2));
+    node_modules_found.sort_by_key(|item| std::cmp::Reverse(item.2));
     for (project_path, node_modules_path, size) in node_modules_found {
         let item = CleanupItem::new(
             &format!("node_modules: {}", project_path),

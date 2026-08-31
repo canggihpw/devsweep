@@ -100,7 +100,7 @@ pub fn check_homebrew() -> CheckResult {
             let total_old_size: u64 = old_versions_info.iter().map(|v| v.size).sum();
 
             if !old_versions_info.is_empty() {
-                old_versions_info.sort_by(|a, b| b.size.cmp(&a.size));
+                old_versions_info.sort_by_key(|v| std::cmp::Reverse(v.size));
 
                 let details: Vec<ItemDetail> = old_versions_info
                     .iter()
@@ -144,7 +144,7 @@ pub fn check_homebrew() -> CheckResult {
             }
         }
         if !large_packages.is_empty() {
-            large_packages.sort_by(|a, b| b.size.cmp(&a.size));
+            large_packages.sort_by_key(|p| std::cmp::Reverse(p.size));
             result.extra_data.large_packages = Some(large_packages);
         }
     }
@@ -175,7 +175,7 @@ pub fn check_homebrew() -> CheckResult {
         }
 
         if !global_npm_packages.is_empty() {
-            global_npm_packages.sort_by(|a, b| b.size.cmp(&a.size));
+            global_npm_packages.sort_by_key(|p| std::cmp::Reverse(p.size));
 
             let details: Vec<ItemDetail> = global_npm_packages
                 .iter()

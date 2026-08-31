@@ -1,5 +1,6 @@
 use crate::types::{CheckResult, CleanupItem};
 use crate::utils::{format_size, get_dir_size, home_dir};
+use std::path::PathBuf;
 use walkdir::WalkDir;
 
 pub fn check_rust() -> CheckResult {
@@ -40,6 +41,21 @@ pub fn check_rust() -> CheckResult {
         }
     }
 
+    // sccache compiler cache (if installed)
+    let sccache_home = std::env::var("SCCACHE_DIR").map(PathBuf::from).ok();
+    let sccache_default = home.join("Library/Caches/sccache");
+    let sccache_dir = sccache_home.unwrap_or(sccache_default);
+    if sccache_dir.exists() {
+        let size = get_dir_size(&sccache_dir);
+        if size > 0 {
+            let item = CleanupItem::new("sccache", size, &format_size(size))
+                .with_path(sccache_dir)
+                .with_safe_to_delete(true)
+                .with_warning("Compilation cache; next build re-populates it");
+            result.add_item(item);
+        }
+    }
+
     // Find target directories in common project locations
     let search_paths = [
         home.join("Projects"),
@@ -74,7 +90,7 @@ pub fn check_rust() -> CheckResult {
 
     // Sort by size descending and add each as a separate item
     // Add two items per target: one for full delete, one for cargo sweep
-    target_dirs.sort_by(|a, b| b.2.cmp(&a.2));
+    target_dirs.sort_by_key(|item| std::cmp::Reverse(item.2));
     for (project_path, target_path, size) in target_dirs {
         // Option 1: Delete entire target directory (default)
         let delete_item = CleanupItem::new(
