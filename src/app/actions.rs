@@ -26,6 +26,12 @@ enum ScanEvent {
     Cached { name: String },
 }
 
+/// Progress event for the Largest tab scan.
+enum LargestEvent {
+    Folders(Vec<crate::largest::LargestEntry>),
+    Files(Vec<crate::largest::LargestEntry>),
+}
+
 /// Stable identity key for an item, used for O(1) selection membership.
 fn item_key(item: &types::CleanupItem) -> (String, String) {
     (
@@ -181,7 +187,129 @@ impl DevSweep {
             self.refresh_quarantine();
         } else if tab == Tab::Settings {
             self.refresh_cache_ttls();
+        } else if tab == Tab::Largest {
+            self.hydrate_largest_from_cache();
         }
+    }
+
+    /// Populate the Largest tab from the on-disk cache if one is still valid,
+    /// so switching to the tab doesn't force an immediate rescan.
+    fn hydrate_largest_from_cache(&mut self) {
+        if self.largest_dirs.is_empty() {
+            if let Some(index) = crate::largest::load_cache() {
+                self.apply_size_index(index);
+            }
+        }
+    }
+
+    /// Apply a fresh `SizeIndex` to UI state (dirs, files, treemap).
+    fn apply_size_index(&mut self, index: crate::largest::SizeIndex) {
+        self.largest_dirs = index.top_dirs.clone();
+        self.largest_files = index.top_files.clone();
+        self.largest_treemap = crate::largest::squarify(
+            &index.top_dirs,
+            crate::largest::TREEMAP_W,
+            crate::largest::TREEMAP_H,
+        );
+    }
+
+    /// Scan for the largest files & folders on a dedicated worker thread, then
+    /// pipe the result back to the UI thread. Mirrors `start_scan` so the heavy
+    /// walk never runs on the main thread and blocks the UI.
+    pub fn start_largest_scan(&mut self, cx: &mut ViewContext<Self>) {
+        if self.is_largest_scanning {
+            return;
+        }
+        self.is_largest_scanning = true;
+        self.largest_status = "Scanning for the largest files & folders...".into();
+        cx.notify();
+
+        let roots = crate::largest::default_roots();
+        let options = crate::largest::ScanOptions {
+            top_n: crate::largest::TREEMAP_N,
+            max_depth: 5,
+        };
+
+        let top_n = crate::largest::TREEMAP_N;
+        let (tx, rx) = std::sync::mpsc::channel::<LargestEvent>();
+
+        // Produce on a real OS thread so the walk runs concurrently with the UI.
+        std::thread::spawn(move || {
+            // Phase 1: folder sizes — streamed as soon as they're computed so the
+            // treemap + folder list populate before the slower file walk finishes.
+            let dirs = crate::largest::scan_largest_folders(&roots, top_n);
+            let _ = tx.send(LargestEvent::Folders(dirs.clone()));
+
+            // Phase 2: largest files, then cache the completed index.
+            let files = crate::largest::scan_largest_files(&roots, &options);
+            let index = crate::largest::SizeIndex {
+                scan_timestamp: crate::largest::now_secs(),
+                roots,
+                top_dirs: dirs,
+                top_files: files,
+            };
+            crate::largest::save_cache(&index);
+            let _ = tx.send(LargestEvent::Files(index.top_files));
+            // tx dropped here -> channel disconnects when the scan is done.
+        });
+
+        cx.spawn(|this, mut cx| async move {
+            // Pump the channel without blocking the main loop.
+            let mut done = false;
+            loop {
+                match rx.try_recv() {
+                    Ok(LargestEvent::Folders(dirs)) => {
+                        let _ = cx.update(|cx| {
+                            let _ = this.update(cx, |this, cx| {
+                                this.largest_dirs = dirs;
+                                this.largest_treemap = crate::largest::squarify(
+                                    &this.largest_dirs,
+                                    crate::largest::TREEMAP_W,
+                                    crate::largest::TREEMAP_H,
+                                );
+                                this.largest_status =
+                                    "Folder sizes done — finding the largest files…".into();
+                                cx.notify();
+                            });
+                        });
+                    }
+                    Ok(LargestEvent::Files(files)) => {
+                        done = true;
+                        let _ = cx.update(|cx| {
+                            let _ = this.update(cx, |this, cx| {
+                                this.largest_files = files;
+                                this.is_largest_scanning = false;
+                                this.largest_status = format!(
+                                    "{} largest folders / {} largest files",
+                                    this.largest_dirs.len(),
+                                    this.largest_files.len()
+                                )
+                                .into();
+                                cx.notify();
+                            });
+                        });
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        // Worker still running; yield to the UI and try again.
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        // Worker ended without sending; just exit cleanly.
+                        let _ = cx.update(|cx| {
+                            let _ = this.update(cx, |this, cx| {
+                                this.is_largest_scanning = false;
+                                cx.notify();
+                            });
+                        });
+                        return;
+                    }
+                }
+                if done {
+                    return;
+                }
+                gpui::Timer::after(std::time::Duration::from_millis(25)).await;
+            }
+        })
+        .detach();
     }
 
     pub fn start_scan(&mut self, use_cache: bool, cx: &mut ViewContext<Self>) {
