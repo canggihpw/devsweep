@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-01
+
+### Added
+- New **📊 Largest** tab showing where your disk space is going:
+  - A **treemap** of the largest folders (color-coded, filled rectangle layout).
+  - Ranked lists of the **largest folders** and the **largest files**
+    (rank, name, full path, size).
+- The largest index is **cached** to disk (30-minute TTL) and loaded instantly
+  when you open the tab, with a **Rescan** button to force a fresh index.
+- The largest scan streams **live progress** — folder sizes first, then the
+  largest files — so results appear as they're found instead of a blank screen.
+- The largest scan runs on a **dedicated background thread** (non-blocking), so
+  scanning, cleaning, and tab switching stay responsive while it runs.
+- Dev-focused default roots (Desktop, Documents, Downloads, Projects, Developer,
+  Code) with a bounded walk (depth 5, symlinks never followed) for fast results.
+
 ## [0.4.0] - 2026-08-31
 
 ### Added
@@ -162,7 +178,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Version Links
 
-[Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/canggihpw/devsweep/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/canggihpw/devsweep/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/canggihpw/devsweep/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/canggihpw/devsweep/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/canggihpw/devsweep/compare/v0.1.0...v0.2.0
