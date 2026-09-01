@@ -19,7 +19,7 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 - **Smart Scanning**: Primary "Scan" button uses cache for instant results
 - **Full Rescan Option**: Secondary "Full Rescan" link for complete fresh analysis
 - **Intelligent Caching**: Detects file changes and cache expiration automatically
-- **17+ Categories**: Organized by tool (Docker, Node.js, Python, Xcode, Git, etc.)
+- **22 Categories**: Organized by tool (Docker, Node.js, Python, Xcode, Git, Bun, Android, etc.)
 - **Super Categories**: Items grouped into logical sections (Development Tools, Package Managers, Project Files, System & Browsers, Trash)
 - **Size Visualization**: Shows exact size for each item and category
 - **Selective Cleanup**: Choose exactly what to delete with checkboxes
@@ -27,6 +27,15 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 - **Safety Warnings**: Highlights potentially risky items
 - **Responsive UI**: Non-blocking operations with immediate visual feedback
 - **Click Feedback**: All buttons provide tactile feedback on interaction
+
+### 📊 Largest Tab
+- **Treemap View**: Color-coded map of your largest folders at a glance
+- **Largest Folders**: Ranked list of the biggest folders (rank, name, path, size)
+- **Largest Files**: Ranked list of the biggest individual files
+- **Cached Index**: Results cached to disk (30-min TTL) and loaded instantly on tab open
+- **Non-blocking Scan**: Runs on a background thread — other actions stay responsive
+- **Live Progress**: Folder sizes appear first, then the largest files stream in
+- **Rescan Button**: Force a fresh index at any time
 
 ### 💾 Quarantine Tab
 - **Safe Deletion**: Files are quarantined instead of permanently deleted
@@ -70,35 +79,39 @@ DevSweep helps you reclaim disk space by safely removing caches and temporary fi
 
 ## Supported Categories
 
-The app scans and cleans the following (17 categories), organized into super categories:
+The app scans and cleans the following (22 categories), organized into super categories:
 
 ### Development Tools
 1. **Docker** - Images, containers, volumes, build cache
 2. **Homebrew** - Cache, downloads, old versions, logs
 3. **Xcode** - DerivedData, archives, device support
 4. **IDE Caches** - VS Code, JetBrains IDEs, Sublime Text
+5. **Android** - Gradle & Android SDK caches
 
 ### Package Managers
-5. **Node.js Package Managers** - npm, yarn, pnpm global caches
-6. **Python** - pip cache, __pycache__ folders, virtualenvs
-7. **Rust/Cargo** - Registry cache, git checkouts, target directories
-8. **Go** - Build cache, module cache
-9. **Java Build Tools** - Gradle cache, Maven repository
+6. **Node.js Package Managers** - npm, yarn, pnpm global caches
+7. **Python** - pip cache, __pycache__ folders, virtualenvs, uv cache
+8. **Rust/Cargo** - Registry cache, git checkouts, target directories, sccache
+9. **Go** - Build cache, module cache
+10. **Java Build Tools** - Gradle cache, Maven repository
+11. **Swift Package Manager** - SwiftPM caches (`org.swift.swiftpm`)
+12. **Bun** - Global and install caches
+13. **Flutter/Dart** - Dart pub cache (`~/.pub-cache`)
 
 ### Project Files
-10. **node_modules in Projects** - Project dependencies (~/Documents, ~/Projects)
-11. **Git Repositories** - Merged branches, stale remotes, large .git directories
-12. **Custom Paths** - User-defined directories to scan
+14. **node_modules in Projects** - Project dependencies (~/Documents, ~/Projects)
+15. **Git Repositories** - Merged branches, stale remotes, large .git directories
+16. **Custom Paths** - User-defined directories to scan
 
 ### System & Browsers
-13. **System Logs & Crash Reports** - Crash reports, diagnostic reports, app logs
-14. **Browser Caches** - Safari, Chrome, Brave, Firefox, Edge, Arc, Opera, Vivaldi
-15. **Shell Caches** - Oh My Zsh, Powerlevel10k, zsh plugins
-16. **Database Caches** - PostgreSQL, MySQL, MongoDB, Redis logs
-17. **General Caches** - Large application caches
+17. **System Logs & Crash Reports** - Crash reports, diagnostic reports, app logs
+18. **Browser Caches** - Safari, Chrome, Brave, Firefox, Edge, Arc, Opera, Vivaldi
+19. **Shell Caches** - Oh My Zsh, Powerlevel10k, zsh plugins
+20. **Database Caches** - PostgreSQL, MySQL, MongoDB, Redis logs
+21. **General Caches** - Large application caches
 
 ### Trash
-18. **Trash** - User trash contents
+22. **Trash** - User trash contents
 
 ## Installation
 
@@ -137,7 +150,7 @@ cargo build --release
 
 # This creates:
 # - DevSweep.app (macOS app bundle)
-# - DevSweep-0.2.0.dmg (ready to distribute)
+# - DevSweep-0.5.0.dmg (ready to distribute)
 ```
 
 ## Usage
@@ -164,6 +177,12 @@ cargo build --release
 - Individual item selection with checkboxes
 - "Safe" badges indicate low-risk deletions
 - Warning (⚠) badges for items needing caution
+
+#### 📊 Largest Tab
+- Click **Rescan** to find the largest files & folders
+- The **treemap** shows the largest folders color-coded by size
+- **Largest folders** and **largest files** listed with full paths and sizes
+- Results stream in live (folders first, then files) — the UI stays responsive
 
 #### 💾 Quarantine Tab
 - View all cleanup operations with timestamps
@@ -309,6 +328,7 @@ devsweep/
 │   ├── types.rs             # Data structures
 │   ├── utils.rs             # Helper functions
 │   ├── scan_cache.rs        # Cache management with TTL
+│   ├── largest.rs           # Largest files/folders index + treemap layout
 │   ├── cleanup_history.rs   # Quarantine and undo system
 │   ├── cache_settings.rs    # Settings persistence
 │   ├── update_checker.rs    # GitHub releases API, version comparison
@@ -321,6 +341,7 @@ devsweep/
 │   │   └── tabs/            # Tab-specific UI
 │   │       ├── mod.rs
 │   │       ├── scan_tab.rs
+│   │       ├── largest_tab.rs
 │   │       ├── quarantine_tab.rs
 │   │       ├── settings_tab.rs
 │   │       └── about_tab.rs
@@ -340,7 +361,11 @@ devsweep/
 │   │   ├── logs.rs
 │   │   ├── browser.rs
 │   │   ├── general.rs
-│   │   └── git.rs           # Git repos: merged branches, stale remotes
+│   │   ├── git.rs           # Git repos: merged branches, stale remotes
+│   │   ├── android.rs
+│   │   ├── bun.rs
+│   │   ├── flutter.rs
+│   │   └── swift.rs
 │   └── ui/
 │       ├── mod.rs
 │       ├── sidebar.rs       # Tab definitions and icons
