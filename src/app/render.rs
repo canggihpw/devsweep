@@ -24,6 +24,7 @@ impl Render for DevSweep {
                     .overflow_hidden()
                     .child(match active_tab {
                         Tab::Scan => self.render_scan_tab(cx),
+                        Tab::Largest => self.render_largest_tab(cx),
                         Tab::Quarantine => self.render_quarantine_tab(cx),
                         Tab::Settings => self.render_settings_tab(cx),
                         Tab::About => self.render_about_tab(cx),
@@ -92,6 +93,7 @@ impl DevSweep {
                     .flex_col()
                     .gap_1()
                     .child(self.sidebar_item(Tab::Scan, active_tab == Tab::Scan, cx))
+                    .child(self.sidebar_item(Tab::Largest, active_tab == Tab::Largest, cx))
                     .child(self.sidebar_item(Tab::Quarantine, active_tab == Tab::Quarantine, cx))
                     .child(self.sidebar_item(Tab::Settings, active_tab == Tab::Settings, cx))
                     .child(self.sidebar_item(Tab::About, active_tab == Tab::About, cx)),

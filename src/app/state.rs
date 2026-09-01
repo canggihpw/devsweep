@@ -1,5 +1,6 @@
 use crate::backend::{CategoryData, StorageBackend};
 use crate::custom_paths::{CustomPath, CustomPathsConfig};
+use crate::largest::{LargestEntry, TreemapRect};
 use crate::types;
 use crate::ui::sidebar::Tab;
 use crate::ui::ThemeMode;
@@ -197,6 +198,12 @@ pub struct DevSweep {
     pub custom_paths: Vec<CustomPath>,
     pub new_custom_path_input: String,
     pub new_custom_path_label: String,
+    // Largest files/folders index state
+    pub largest_dirs: Vec<LargestEntry>,
+    pub largest_files: Vec<LargestEntry>,
+    pub largest_treemap: Vec<TreemapRect>,
+    pub is_largest_scanning: bool,
+    pub largest_status: SharedString,
 }
 
 impl Default for DevSweep {
@@ -258,6 +265,11 @@ impl DevSweep {
             custom_paths: CustomPathsConfig::load().paths,
             new_custom_path_input: String::new(),
             new_custom_path_label: String::new(),
+            largest_dirs: Vec::new(),
+            largest_files: Vec::new(),
+            largest_treemap: Vec::new(),
+            is_largest_scanning: false,
+            largest_status: "Scan to see the largest files & folders".into(),
         }
     }
 
